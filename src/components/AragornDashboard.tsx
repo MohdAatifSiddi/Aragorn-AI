@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { logout } from "@/app/auth/actions";
 import { 
   ShieldCheck, 
   Construction, 
@@ -22,7 +23,12 @@ import {
   Activity,
   Scan,
   Maximize2,
-  RefreshCcw
+  RefreshCcw,
+  ArrowRight,
+  LayoutDashboard,
+  Box,
+  BrainCircuit,
+  Settings
 } from "lucide-react";
 import { 
   BarChart, 
@@ -63,11 +69,59 @@ export default function AragornDashboard() {
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
 
+  const fetchSiteDetails = useCallback(async (siteId: string) => {
+    try {
+      const [zonesRes, alertsRes, materialsRes, statsRes, detectionsRes] = await Promise.all([
+        supabase.from('zones').select('*').eq('site_id', siteId),
+        supabase.from('alerts').select('*').eq('site_id', siteId).order('created_at', { ascending: false }),
+        supabase.from('material_verifications').select('*').eq('site_id', siteId).order('created_at', { ascending: false }),
+        supabase.from('project_stats').select('*').eq('site_id', siteId).order('date', { ascending: true }),
+        supabase.from('detections').select('*, zones(name)').order('created_at', { ascending: false }).limit(20)
+      ]);
+
+      if (zonesRes.data) setZones(zonesRes.data);
+      if (alertsRes.data) setAlerts(alertsRes.data);
+      if (materialsRes.data) setMaterials(materialsRes.data);
+      if (statsRes.data) setStats(statsRes.data);
+      if (detectionsRes.data) setDetections(detectionsRes.data);
+    } catch (error) {
+      console.error("Error fetching site details:", error);
+    }
+  }, []);
+
+  const fetchInitialData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/login");
+        return;
+      }
+      setUser(session.user);
+
+      const { data: sitesData, error: sitesError } = await supabase.from('sites').select('*').order('created_at', { ascending: false });
+      if (sitesError) throw sitesError;
+
+      if (sitesData && sitesData.length > 0) {
+        setSites(sitesData);
+        setSelectedSite(sitesData[0]);
+        await fetchSiteDetails(sitesData[0].id);
+      } else {
+        // Site doesn't exist? Show a prompt to seed demo site or create one.
+        toast.info("No active sites. You might need to provision a demo site.");
+      }
+    } catch (error: any) {
+      console.error("Error fetching initial data:", error);
+      toast.error("Connectivity issue. Check your connection.");
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchSiteDetails, router]);
+
   useEffect(() => {
     setMounted(true);
     fetchInitialData();
 
-    // Set up realtime subscriptions
     const alertsChannel = supabase
       .channel('realtime-updates')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alerts' }, (payload) => {
@@ -88,83 +142,34 @@ export default function AragornDashboard() {
     return () => {
       supabase.removeChannel(alertsChannel);
     };
-  }, []);
-
-  const fetchInitialData = async () => {
-    setLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push("/login");
-        return;
-      }
-      setUser(session.user);
-
-      const { data: sitesData, error: sitesError } = await supabase.from('sites').select('*');
-      if (sitesError) throw sitesError;
-
-      if (sitesData && sitesData.length > 0) {
-        setSites(sitesData);
-        setSelectedSite(sitesData[0]);
-        await fetchSiteDetails(sitesData[0].id);
-      } else {
-        // Fallback for demo: ensure we have something to show
-        toast.info("No sites found. Initializing demo site...");
-        const demoSiteId = "1d1c2a8c-b6fa-4dc9-b09c-109d15f86750";
-        const { data: site } = await supabase.from('sites').select('*').eq('id', demoSiteId).single();
-        if (site) {
-          setSites([site]);
-          setSelectedSite(site);
-          await fetchSiteDetails(site.id);
-        }
-      }
-    } catch (error: any) {
-      console.error("Error fetching initial data:", error);
-      toast.error("Connectivity issue. Please check your network.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchSiteDetails = async (siteId: string) => {
-    const [zonesRes, alertsRes, materialsRes, statsRes, detectionsRes] = await Promise.all([
-      supabase.from('zones').select('*').eq('site_id', siteId),
-      supabase.from('alerts').select('*').eq('site_id', siteId).order('created_at', { ascending: false }),
-      supabase.from('material_verifications').select('*').eq('site_id', siteId).order('created_at', { ascending: false }),
-      supabase.from('project_stats').select('*').eq('site_id', siteId).order('date', { ascending: true }),
-      supabase.from('detections').select('*, zones(name)').order('created_at', { ascending: false }).limit(20)
-    ]);
-
-    if (zonesRes.data) setZones(zonesRes.data);
-    if (alertsRes.data) setAlerts(alertsRes.data);
-    if (materialsRes.data) setMaterials(materialsRes.data);
-    if (statsRes.data) setStats(statsRes.data);
-    if (detectionsRes.data) setDetections(detectionsRes.data);
-  };
+  }, [fetchInitialData]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/");
+    await logout();
   };
 
   const refreshData = () => {
     if (selectedSite) fetchSiteDetails(selectedSite.id);
-    toast.success("Dashboard Refreshed");
+    toast.success("Syncing Edge Data...");
   };
 
   if (!mounted || loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="flex flex-col items-center gap-6">
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-8">
           <div className="relative">
-            <Loader2 className="h-16 w-16 text-blue-600 animate-spin" />
+            <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className="h-20 w-20 rounded-3xl border-2 border-blue-600/20 border-t-blue-600"
+            />
             <div className="absolute inset-0 flex items-center justify-center">
-              <Construction className="h-6 w-6 text-white" />
+              <Construction className="h-6 w-6 text-blue-500" />
             </div>
           </div>
-          <div className="text-center">
-            <p className="text-white font-bold text-sm uppercase tracking-[0.5em] mb-2">Aragorn AI</p>
-            <p className="text-zinc-600 text-[10px] uppercase tracking-widest animate-pulse">Establishing Secure Edge Link</p>
+          <div className="text-center space-y-2">
+            <p className="text-white font-bold text-xs uppercase tracking-[0.6em] ml-2">Aragorn Edge Vision</p>
+            <p className="text-zinc-700 text-[9px] uppercase tracking-widest animate-pulse">Initializing Secure Pipeline...</p>
           </div>
         </div>
       </div>
@@ -184,10 +189,10 @@ export default function AragornDashboard() {
       detections: "Detections Log",
       recentActivity: "Recent Activity",
       aiInsights: "Predictive Intelligence",
-      recommendation: "Predicted delay in Zone 3 due to supply chain bottleneck. Recommendation: Reallocate labor to Zone 1 finishing to maintain velocity.",
+      recommendation: "Predicted delay in Foundations due to monsoon rainfall. Recommendation: Accelerate structural steel supply chain orders.",
       viewFull: "View Detailed Report",
       complianceTrend: "Compliance Trend",
-      growth: "+2.1% improvement",
+      growth: "+4.2% improvement",
       last24: "Last 24h",
       materials: "Material Ledger",
       matID: "ID",
@@ -208,10 +213,10 @@ export default function AragornDashboard() {
       detections: "डिटेक्शन लॉग",
       recentActivity: "हाल की गतिविधि",
       aiInsights: "भविष्य कहनेवाला बुद्धिमत्ता",
-      recommendation: "सप्लाई चेन की बाधा के कारण जोन 3 में देरी की भविष्यवाणी। सिफारिश: गति बनाए रखने के लिए श्रमिकों को जोन 1 फिनिशिंग में पुन: आवंटित करें।",
+      recommendation: "मानसून की बारिश के कारण फाउंडेशन में देरी की भविष्यवाणी। सिफारिश: संरचनात्मक स्टील आपूर्ति श्रृंखला के आदेशों में तेजी लाएं।",
       viewFull: "विस्तृत रिपोर्ट देखें",
       complianceTrend: "अनुपालन रुझान",
-      growth: "+2.1% सुधार",
+      growth: "+4.2% सुधार",
       last24: "पिछले 24 घंटे",
       materials: "सामग्री लेजर",
       matID: "आईडी",
@@ -232,10 +237,10 @@ export default function AragornDashboard() {
       detections: "ڈیٹیکشن لاگ",
       recentActivity: "حالیہ سرگرمی",
       aiInsights: "پیشن گوئی کی بصیرت",
-      recommendation: "سپلائی چین کی رکاوٹ کی وجہ سے زون 3 میں تاخیر کی پیش گوئی۔ سفارش: رفتار کو برقرار رکھنے کے لیے لیبر کو زون 1 کی فنشنگ میں دوبارہ منتقل کریں۔",
+      recommendation: "مون سون کی بارش کی وجہ سے فاؤنڈیشن میں تاخیر کی پیش گوئی۔ سفارش: سٹرکچرل سٹیل سپلائی چین کے آرڈرز کو تیز کریں۔",
       viewFull: "تفصیلی رپورٹ دیکھیں",
       complianceTrend: "تعمیل کا رجحان",
-      growth: "+2.1٪ بہتری",
+      growth: "+4.2٪ بہتری",
       last24: "پچھلے 24 گھنٹے",
       materials: "مادی لیجر",
       matID: "آئی ڈی",
@@ -248,65 +253,86 @@ export default function AragornDashboard() {
 
   const t = translations[lang];
 
-  const currentSafety = stats.length > 0 ? stats[stats.length - 1].safety_compliance_percent : 0;
+  const currentSafety = stats.length > 0 ? stats[stats.length - 1].safety_compliance_percent : 96;
   const avgProgress = zones.length > 0 ? Math.round(zones.reduce((acc, z) => acc + z.progress_percent, 0) / zones.length) : 0;
   const activeZonesCount = zones.filter(z => z.status === 'active').length;
   const highAlerts = alerts.filter(a => a.severity === 'high' && !a.is_resolved).length;
 
   return (
-    <div className={`min-h-screen bg-[#0a0a0a] p-4 md:p-8 ${lang === 'ur' ? 'rtl' : 'ltr'} font-sans antialiased selection:bg-blue-500/30 text-white`}>
-      <div className="max-w-7xl mx-auto">
-        {/* Navigation Header */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-          <div className={`flex items-center gap-5 ${lang === 'ur' ? 'flex-row-reverse' : ''}`}>
+    <div className={`min-h-screen bg-[#050505] p-4 md:p-8 ${lang === 'ur' ? 'rtl' : 'ltr'} font-sans antialiased text-white selection:bg-blue-600/30`}>
+      <div className="max-w-[1600px] mx-auto space-y-10">
+        
+        {/* Navigation / Header */}
+        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+          <div className="flex items-center gap-6">
             <motion.div 
               whileHover={{ scale: 1.05 }}
-              className="bg-blue-600 p-3 rounded-2xl shadow-xl shadow-blue-600/20"
+              whileActive={{ scale: 0.95 }}
+              className="bg-blue-600 p-4 rounded-3xl shadow-2xl shadow-blue-600/20 cursor-pointer"
             >
               <Construction className="h-6 w-6 text-white" />
             </motion.div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white uppercase flex items-center gap-3">
+            <div className="space-y-1">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white uppercase flex items-center gap-4">
                 {t.title}
-                <Badge variant="outline" className="text-[10px] uppercase tracking-[0.3em] border-white/10 text-zinc-400 bg-white/5 px-3">Edge v2.0</Badge>
+                <Badge variant="outline" className="text-[9px] uppercase tracking-[0.4em] border-zinc-800 text-zinc-500 bg-zinc-900/50 px-4 py-1">Enterprise Link</Badge>
               </h1>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-3">
                 <MapPin className="h-3 w-3 text-blue-500" />
-                <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest">{selectedSite?.name || t.tagline} • {selectedSite?.location || 'India'}</p>
+                <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-[0.2em]">{selectedSite?.name || "Global"} • {selectedSite?.location || "India"}</p>
               </div>
             </div>
           </div>
 
-          <div className={`flex items-center gap-3 w-full md:w-auto ${lang === 'ur' ? 'flex-row-reverse' : ''}`}>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={refreshData}
-              className="rounded-full border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 h-10 w-10 p-0"
-            >
-              <RefreshCcw className="h-4 w-4" />
-            </Button>
+          <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+            <div className="flex items-center gap-2 bg-zinc-900/50 p-1 rounded-full border border-zinc-800/50">
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setLang('en')}
+                    className={`rounded-full px-5 text-[9px] font-bold uppercase tracking-widest h-8 transition-all ${lang === 'en' ? 'bg-zinc-800 text-white' : 'text-zinc-600 hover:text-white'}`}
+                >
+                    EN
+                </Button>
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setLang('hi')}
+                    className={`rounded-full px-5 text-[9px] font-bold uppercase tracking-widest h-8 transition-all ${lang === 'hi' ? 'bg-zinc-800 text-white' : 'text-zinc-600 hover:text-white'}`}
+                >
+                    HI
+                </Button>
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setLang('ur')}
+                    className={`rounded-full px-5 text-[9px] font-bold uppercase tracking-widest h-8 transition-all ${lang === 'ur' ? 'bg-zinc-800 text-white' : 'text-zinc-600 hover:text-white'}`}
+                >
+                    UR
+                </Button>
+            </div>
 
             <Button 
               variant="outline" 
-              size="sm" 
-              onClick={() => setLang(lang === 'en' ? 'hi' : lang === 'hi' ? 'ur' : 'en')}
-              className="flex items-center gap-3 rounded-full border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 shadow-sm px-6 h-10 text-[10px] font-bold uppercase tracking-widest"
+              onClick={refreshData}
+              className="rounded-full border-zinc-800 bg-zinc-900/30 hover:bg-zinc-800 h-10 w-10 p-0 transition-transform active:rotate-180 duration-500"
             >
-              <Globe className="h-4 w-4 text-blue-500" />
-              {lang === 'en' ? "English" : lang === 'hi' ? "हिंदी" : "اردو"}
+              <RefreshCcw className="h-4 w-4 text-zinc-400" />
             </Button>
-            
-            <div className="flex items-center gap-3 bg-zinc-900/80 p-1.5 pr-4 rounded-full border border-zinc-800 shadow-xl ml-auto md:ml-0">
-               <div className="h-7 w-7 rounded-full bg-blue-600 flex items-center justify-center font-bold text-[10px]">
+
+            <div className="flex items-center gap-4 bg-zinc-900/80 p-1.5 pr-6 rounded-full border border-zinc-800 shadow-2xl ml-auto">
+               <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-[11px] shadow-lg shadow-blue-600/20">
                  {user?.email?.[0].toUpperCase()}
                </div>
-               <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-300 truncate max-w-[120px]">{user?.email?.split('@')[0]}</span>
+               <div className="hidden sm:block">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">{user?.email?.split('@')[0]}</p>
+                  <p className="text-[8px] text-zinc-600 font-bold uppercase tracking-[0.1em]">Site Admin</p>
+               </div>
                <Button 
                 variant="ghost" 
                 size="icon"
                 onClick={handleLogout}
-                className="h-7 w-7 rounded-full text-zinc-500 hover:text-red-500 hover:bg-red-500/10"
+                className="h-8 w-8 rounded-full text-zinc-600 hover:text-red-500 hover:bg-red-500/10 transition-colors"
               >
                 <LogOut className="h-4 w-4" />
               </Button>
@@ -314,436 +340,391 @@ export default function AragornDashboard() {
           </div>
         </header>
 
-        {/* Stats Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
-          {[
-            { title: t.safety, value: `${currentSafety}%`, icon: ShieldCheck, color: "text-green-500", bg: "bg-green-500/10", progress: currentSafety },
-            { title: t.progress, value: `${avgProgress}%`, icon: TrendingUp, color: "text-blue-500", bg: "bg-blue-500/10", progress: avgProgress },
-            { title: t.activeZones, value: `${activeZonesCount}`, icon: Layers, color: "text-amber-500", bg: "bg-amber-500/10", desc: "Operational Zones" },
-            { title: t.alerts, value: alerts.filter(a => !a.is_resolved).length.toString().padStart(2, '0'), icon: AlertTriangle, color: "text-red-500", bg: "bg-red-500/10", badge: highAlerts > 0 ? `${highAlerts} High` : null }
-          ].map((stat, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-              <Card className="border-none bg-zinc-900/50 hover:bg-zinc-900 transition-all border border-white/5 shadow-2xl overflow-hidden group">
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                      <div className={`${stat.bg} ${stat.color} p-2 rounded-xl`}>
-                        <stat.icon size={22} />
-                      </div>
-                      {stat.badge && <Badge variant="destructive" className="animate-pulse text-[8px] uppercase tracking-widest px-2">{stat.badge}</Badge>}
-                  </div>
-                  <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-2">{stat.title}</h3>
-                  <div className="text-3xl font-bold tracking-tighter text-white">{stat.value}</div>
-                  
-                  {stat.progress !== undefined ? (
-                    <div className="mt-5 space-y-2">
-                        <Progress value={stat.progress} className="h-1 bg-white/5" indicatorClassName={stat.color.replace('text', 'bg')} />
-                        <div className="flex justify-between text-[8px] font-bold uppercase tracking-[0.2em] text-zinc-600">
-                          <span>0%</span>
-                          <span>Target 100%</span>
-                        </div>
-                    </div>
-                  ) : (
-                    <div className="mt-5 text-[9px] text-zinc-500 flex items-center gap-2 uppercase font-bold tracking-widest">
-                        <Activity size={12} className="text-blue-500" />
-                        {stat.desc || "Live Data Stream"}
-                    </div>
-                  )}
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Dashboard Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Dashboard Core Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           
-          {/* Main Content (Left) */}
-          <div className="lg:col-span-8 space-y-8">
+          {/* Left Column - Stats & Main Visuals */}
+          <div className="lg:col-span-8 space-y-10">
             
-            {/* Zone Progress Card */}
-            <Card className="border-none bg-zinc-900/40 border border-white/5 shadow-2xl">
-              <CardHeader className="flex flex-row items-center justify-between border-b border-white/5 pb-6">
-                <div>
-                  <CardTitle className="text-sm font-bold uppercase tracking-[0.2em] flex items-center gap-3">
-                    <Construction size={18} className="text-blue-500" />
-                    {t.zoneProgress}
-                  </CardTitle>
+            {/* Real-time KPI Overview */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[
+                    { label: t.safety, value: `${currentSafety}%`, icon: ShieldCheck, color: "text-green-500", bg: "bg-green-500/10", trend: "+0.5%" },
+                    { label: t.progress, value: `${avgProgress}%`, icon: TrendingUp, color: "text-blue-500", bg: "bg-blue-500/10", trend: "+2.1%" },
+                    { label: t.activeZones, value: activeZonesCount, icon: Layers, color: "text-zinc-400", bg: "bg-zinc-400/10", trend: "0" },
+                    { label: t.alerts, value: alerts.filter(a => !a.is_resolved).length, icon: AlertTriangle, color: "text-red-500", bg: "bg-red-500/10", trend: highAlerts > 0 ? `${highAlerts} CRITICAL` : "STABLE" }
+                ].map((kpi, i) => (
+                    <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
+                        <Card className="bg-zinc-900/20 border-zinc-800/50 hover:bg-zinc-900/40 transition-all cursor-default group border-none shadow-2xl">
+                            <CardContent className="p-7 space-y-6">
+                                <div className="flex justify-between items-start">
+                                    <div className={`${kpi.bg} ${kpi.color} p-3 rounded-2xl group-hover:scale-110 transition-transform`}>
+                                        <kpi.icon size={20} />
+                                    </div>
+                                    <span className={`text-[9px] font-bold tracking-widest uppercase ${kpi.trend.includes('+') ? 'text-green-500' : kpi.trend === 'STABLE' ? 'text-zinc-600' : 'text-red-500'}`}>
+                                        {kpi.trend}
+                                    </span>
+                                </div>
+                                <div className="space-y-1">
+                                    <h3 className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">{kpi.label}</h3>
+                                    <p className="text-3xl font-bold tracking-tighter text-white">{kpi.value}</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                ))}
+            </div>
+
+            {/* Site Vision & Analytics Tabs */}
+            <Tabs defaultValue="vision" className="space-y-8">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+                    <TabsList className="bg-zinc-900/50 p-1.5 rounded-full border border-zinc-800/50 h-14 w-fit">
+                        <TabsTrigger value="vision" className="rounded-full px-8 h-full data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-500 text-[10px] uppercase font-bold tracking-widest">
+                            <Camera size={14} className="mr-3" />
+                            {t.realtimeFeed}
+                        </TabsTrigger>
+                        <TabsTrigger value="progress" className="rounded-full px-8 h-full data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-500 text-[10px] uppercase font-bold tracking-widest">
+                            <Box size={14} className="mr-3" />
+                            {t.zoneProgress}
+                        </TabsTrigger>
+                        <TabsTrigger value="ledger" className="rounded-full px-8 h-full data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-500 text-[10px] uppercase font-bold tracking-widest">
+                            <History size={14} className="mr-3" />
+                            Site Logs
+                        </TabsTrigger>
+                    </TabsList>
+                    
+                    <div className="flex items-center gap-4 text-[9px] font-bold uppercase tracking-widest text-zinc-600 pr-4">
+                        <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse shadow-lg shadow-green-500/50" />
+                        Edge Node: Active
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                   <Button variant="ghost" size="sm" className="text-[9px] uppercase font-bold tracking-widest text-zinc-500 hover:text-white">Zones</Button>
-                   <Button variant="ghost" size="sm" className="text-[9px] uppercase font-bold tracking-widest text-zinc-500 hover:text-white">Filters</Button>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-8">
-                <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={zones} layout="vertical" margin={{ left: 0, right: 30 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.03)" />
-                      <XAxis type="number" domain={[0, 100]} hide />
-                      <YAxis dataKey="name" type="category" width={100} fontSize={10} tickLine={false} axisLine={false} tick={{fill: '#71717a', fontWeight: 'bold'}} />
-                      <Tooltip 
-                        cursor={{fill: 'rgba(255,255,255,0.02)'}}
-                        contentStyle={{ borderRadius: '16px', background: '#000', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}
-                        itemStyle={{ color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
-                      />
-                      <Bar dataKey="progress_percent" radius={[0, 12, 12, 0]} barSize={22} name="Progress %">
-                        {zones.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color || '#3b82f6'} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
 
-            {/* Vision Feed & Logs Section */}
-            <Tabs defaultValue="feed" className="w-full">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                <TabsList className="bg-zinc-900 p-1 rounded-full border border-white/5 h-12 flex">
-                  <TabsTrigger value="feed" className="rounded-full px-8 data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-500 text-[10px] uppercase font-bold tracking-widest transition-all">
-                    <Camera size={14} className="mr-2" />
-                    {t.realtimeFeed}
-                  </TabsTrigger>
-                  <TabsTrigger value="detections" className="rounded-full px-8 data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-500 text-[10px] uppercase font-bold tracking-widest transition-all">
-                    <Scan size={14} className="mr-2" />
-                    {t.detections}
-                  </TabsTrigger>
-                  <TabsTrigger value="materials" className="rounded-full px-8 data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-500 text-[10px] uppercase font-bold tracking-widest transition-all">
-                    <PackageCheck size={14} className="mr-2" />
-                    {t.materials}
-                  </TabsTrigger>
-                </TabsList>
-                
-                <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-zinc-600">
-                   <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                   Edge Status: Optimal
-                </div>
-              </div>
-
-              <AnimatePresence mode="wait">
-                <TabsContent value="feed" key="feed">
-                   <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
-                      <Card className="border-none bg-black overflow-hidden relative shadow-2xl group border border-white/5">
-                        <div className="absolute top-0 left-0 right-0 p-6 z-20 flex justify-between items-start bg-gradient-to-b from-black/90 to-transparent">
-                           <div className="space-y-1">
-                              <div className="flex items-center gap-3">
-                                <Badge className="bg-red-600 hover:bg-red-700 text-[9px] uppercase tracking-widest px-3 py-1 animate-pulse border-none">Live Vision Feed</Badge>
-                                <span className="text-white text-[10px] font-mono tracking-widest uppercase font-bold">{zones[1]?.name || "Zone 2"} • NODE_X_09</span>
-                              </div>
-                              <p className="text-zinc-500 text-[9px] uppercase tracking-[0.2em] font-bold">Latency: 42ms • Resolution: 4K • RTSP_OVER_SSL</p>
-                           </div>
-                           <div className="flex gap-2">
-                              <Button variant="secondary" size="icon" className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10 text-white border-none"><Maximize2 size={14} /></Button>
-                           </div>
-                        </div>
-
-                        <div className="aspect-video relative flex items-center justify-center bg-zinc-950/50">
-                            {/* Scanning Line Effect */}
-                            <div className="absolute inset-0 bg-gradient-to-b from-blue-500/10 to-transparent h-1/3 w-full top-0 animate-[scan_6s_linear_infinite]" />
-                            
-                            {/* HUD Overlay */}
-                            <div className="absolute top-1/4 left-1/4 w-40 h-56 border border-blue-500/30 rounded-lg p-2 flex flex-col justify-between backdrop-blur-[1px]">
-                               <div className="flex flex-col gap-1">
-                                  <span className="bg-blue-600 text-[8px] text-white px-2 py-0.5 rounded-sm uppercase font-bold tracking-tighter w-fit">PERSON_ID: #209</span>
-                                  <span className="text-blue-400 text-[8px] font-mono">CONF: 98.4%</span>
-                               </div>
-                               <div className="text-[8px] font-mono text-blue-300">PPE_STATUS: <span className="text-green-400">VERIFIED</span></div>
-                            </div>
-
-                            <div className="absolute bottom-1/3 right-1/3 w-32 h-44 border border-red-500/30 rounded-lg p-2 flex flex-col justify-between backdrop-blur-[1px] bg-red-500/5">
-                               <div className="flex flex-col gap-1">
-                                  <span className="bg-red-600 text-[8px] text-white px-2 py-0.5 rounded-sm uppercase font-bold tracking-tighter w-fit">VIOLATION: NO_VEST</span>
-                                  <span className="text-red-400 text-[8px] font-mono">CONF: 91.2%</span>
-                               </div>
-                               <div className="text-[8px] font-mono text-red-300">ALERT_DISPATCHED: <span className="animate-pulse">YES</span></div>
-                            </div>
-
-                            <div className="text-zinc-800 font-mono text-[10px] tracking-[0.6em] uppercase select-none opacity-20">Aragorn Edge Vision Proxy</div>
-                        </div>
-
-                        <div className="p-6 bg-zinc-900 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
-                           <div className="flex gap-3 w-full md:w-auto">
-                              <Button size="sm" className="h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-[10px] uppercase font-bold tracking-widest px-6 shadow-lg shadow-blue-600/20 border-none transition-transform active:scale-95">Recalibrate Sensors</Button>
-                              <Button size="sm" variant="outline" className="h-10 border-white/10 text-zinc-400 hover:bg-white hover:text-black rounded-full text-[10px] uppercase font-bold tracking-widest px-6 transition-all">Capture Snapshot</Button>
-                           </div>
-                           <div className="flex items-center gap-6 text-zinc-500 text-[9px] font-mono tracking-[0.2em] uppercase font-bold">
-                              <span>32.190° N</span>
-                              <div className="h-1 w-1 rounded-full bg-zinc-700" />
-                              <span>74.120° E</span>
-                           </div>
-                        </div>
-                      </Card>
-                   </motion.div>
-                </TabsContent>
-
-                <TabsContent value="detections" key="detections">
-                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-                      <Card className="border-none bg-zinc-900/40 border border-white/5 shadow-2xl overflow-hidden">
-                        <CardHeader className="border-b border-white/5 px-6 py-5">
-                          <CardTitle className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                            <History size={16} className="text-blue-500" />
-                            Site Detections Archive
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                           <div className="max-h-[500px] overflow-y-auto no-scrollbar">
-                              <table className="w-full text-left">
-                                <thead className="bg-black/20 sticky top-0 z-10">
-                                  <tr className="text-[9px] uppercase tracking-[0.2em] font-bold text-zinc-500 border-b border-white/5">
-                                    <th className="px-6 py-4">Detection Type</th>
-                                    <th className="px-6 py-4">Zone</th>
-                                    <th className="px-6 py-4">Confidence</th>
-                                    <th className="px-6 py-4">Status</th>
-                                    <th className="px-6 py-4 text-right">Time</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5">
-                                  {detections.length > 0 ? detections.map((det) => (
-                                    <tr key={det.id} className="hover:bg-white/5 transition-colors group">
-                                      <td className="px-6 py-4">
-                                        <div className="flex flex-col">
-                                          <span className="text-[10px] font-bold uppercase tracking-tight text-white">{det.type.replace('_', ' ')}</span>
-                                          <span className="text-[9px] text-zinc-500 font-medium">{det.details?.issue || 'Object detected'}</span>
+                <AnimatePresence mode="wait">
+                    <TabsContent value="vision" key="vision" className="m-0 focus-visible:outline-none">
+                        <motion.div initial={{ opacity: 0, scale: 0.99 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}>
+                            <Card className="bg-black border-zinc-900 overflow-hidden relative shadow-3xl group border-none">
+                                <div className="aspect-video relative bg-zinc-950">
+                                    {/* Vision Overlay HUD */}
+                                    <div className="absolute inset-0 z-10 pointer-events-none p-10 flex flex-col justify-between">
+                                        <div className="flex justify-between items-start">
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="bg-red-600 text-white text-[9px] font-bold uppercase px-4 py-1.5 rounded-sm tracking-widest animate-pulse">Live Stream</div>
+                                                    <span className="text-white text-[11px] font-mono tracking-widest uppercase font-bold">{zones[2]?.name || "Sector 03"} • NODE_VISION_4K</span>
+                                                </div>
+                                                <p className="text-zinc-600 text-[9px] font-mono uppercase tracking-[0.2em]">RTSP://SITE_LINK.ENC • 4.2 Gbps • H.265</p>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <div className="bg-zinc-900/80 backdrop-blur-md p-3 rounded-xl border border-white/5 flex flex-col items-end">
+                                                    <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-widest mb-1">FPS</span>
+                                                    <span className="text-blue-500 font-mono text-sm">59.8</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                      </td>
-                                      <td className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{det.zones?.name || 'Unknown Zone'}</td>
-                                      <td className="px-6 py-4 font-mono text-[10px] text-blue-500">{(det.details?.confidence * 100 || 94).toFixed(1)}%</td>
-                                      <td className="px-6 py-4">
-                                        <Badge variant="outline" className={`text-[8px] uppercase tracking-widest border-none px-0 ${det.severity === 'high' ? 'text-red-500' : 'text-blue-500'}`}>
-                                          {det.severity}
-                                        </Badge>
-                                      </td>
-                                      <td className="px-6 py-4 text-right text-[10px] text-zinc-600 font-bold">{formatDistanceToNow(new Date(det.created_at))} ago</td>
-                                    </tr>
-                                  )) : (
-                                    <tr>
-                                      <td colSpan={5} className="py-20 text-center text-xs text-zinc-600 uppercase tracking-widest font-bold opacity-30">Waiting for detection events...</td>
-                                    </tr>
-                                  )}
-                                </tbody>
-                              </table>
-                           </div>
-                        </CardContent>
-                      </Card>
-                   </motion.div>
-                </TabsContent>
 
-                <TabsContent value="materials" key="materials">
-                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-                      <Card className="border-none bg-zinc-900/40 border border-white/5 shadow-2xl overflow-hidden">
-                        <CardHeader className="border-b border-white/5 px-6 py-5">
-                          <CardTitle className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                            <PackageCheck size={16} className="text-blue-500" />
-                            Inventory & Material Verification
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                           <div className="max-h-[500px] overflow-y-auto no-scrollbar">
-                              <table className="w-full text-left">
-                                <thead className="bg-black/20 sticky top-0 z-10">
-                                  <tr className="text-[9px] uppercase tracking-[0.2em] font-bold text-zinc-500 border-b border-white/5">
-                                    <th className="px-6 py-4">{t.matID}</th>
-                                    <th className="px-6 py-4">{t.matItem}</th>
-                                    <th className="px-6 py-4">{t.matQty}</th>
-                                    <th className="px-6 py-4">{t.matStatus}</th>
-                                    <th className="px-6 py-4 text-right">Log Time</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5">
-                                  {materials.length > 0 ? materials.map((item) => (
-                                    <tr key={item.id} className="group hover:bg-white/5 transition-colors">
-                                      <td className="px-6 py-4 font-mono text-[10px] opacity-30">{item.id.slice(0, 8)}</td>
-                                      <td className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-white">{item.material_name}</td>
-                                      <td className="px-6 py-4 text-xs font-bold text-zinc-500">{item.quantity}</td>
-                                      <td className="px-6 py-4">
-                                        <Badge variant="outline" 
-                                               className={`text-[8px] uppercase tracking-widest h-6 px-3 rounded-full font-bold border-none ${item.status === 'verified' ? 'text-green-500 bg-green-500/10' : 'text-red-500 bg-red-500/10'}`}>
-                                          {item.status}
-                                        </Badge>
-                                      </td>
-                                      <td className="px-6 py-4 text-right text-[10px] text-zinc-600 font-bold">{formatDistanceToNow(new Date(item.created_at))} ago</td>
-                                    </tr>
-                                  )) : (
-                                    <tr>
-                                      <td colSpan={5} className="py-20 text-center text-xs text-zinc-600 uppercase tracking-widest font-bold opacity-30">No material verifications recorded</td>
-                                    </tr>
-                                  )}
-                                </tbody>
-                              </table>
-                           </div>
-                        </CardContent>
-                      </Card>
-                   </motion.div>
-                </TabsContent>
-              </AnimatePresence>
+                                        <div className="flex justify-between items-end">
+                                            <div className="bg-black/60 backdrop-blur-xl p-5 rounded-2xl border border-white/5 space-y-4 max-w-[200px]">
+                                                <h4 className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest border-b border-white/5 pb-2">Detection Matrix</h4>
+                                                <div className="space-y-2">
+                                                    <div className="flex justify-between text-[10px] font-mono">
+                                                        <span className="text-zinc-400">HUMANS</span>
+                                                        <span className="text-white">12</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-[10px] font-mono">
+                                                        <span className="text-zinc-400">HAZARDS</span>
+                                                        <span className="text-green-500">0</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-[10px] font-mono">
+                                                        <span className="text-zinc-400">PPE_OK</span>
+                                                        <span className="text-blue-500">100%</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-4">
+                                                <Button size="sm" className="h-10 bg-white text-black hover:bg-zinc-200 rounded-full text-[9px] font-bold uppercase tracking-widest px-8 shadow-2xl transition-all">Capture Frame</Button>
+                                                <Button size="icon" variant="outline" className="h-10 w-10 border-zinc-800 bg-black/40 text-white rounded-full"><Maximize2 size={16} /></Button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Vision Body */}
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        {/* Scanning Visualizer */}
+                                        <div className="w-full h-full relative opacity-40">
+                                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.05)_0,transparent_100%)]" />
+                                            <div className="absolute top-1/4 left-1/3 w-[300px] h-[400px] border border-blue-500/20 rounded-[40px] flex items-center justify-center">
+                                                <div className="text-[10px] font-mono text-blue-500 animate-pulse uppercase tracking-[0.4em]">Tracking Entity #419</div>
+                                            </div>
+                                        </div>
+                                        <div className="text-zinc-900 font-bold text-[11px] uppercase tracking-[1em] opacity-30 select-none">Aragorn Edge Vision Proxy</div>
+                                    </div>
+
+                                    {/* Scan Line */}
+                                    <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent animate-[scan_8s_linear_infinite]" />
+                                </div>
+                            </Card>
+                        </motion.div>
+                    </TabsContent>
+
+                    <TabsContent value="progress" key="progress" className="m-0 focus-visible:outline-none">
+                        <Card className="bg-zinc-900/20 border-zinc-800 border-none shadow-3xl p-10">
+                            <div className="space-y-10">
+                                <div className="flex justify-between items-end">
+                                    <div className="space-y-2">
+                                        <h3 className="text-xl font-bold text-white tracking-tight uppercase tracking-[0.1em]">Site Completion Matrix</h3>
+                                        <p className="text-zinc-600 text-[10px] uppercase tracking-widest font-bold">Real-time photogrammetric estimation</p>
+                                    </div>
+                                    <div className="text-right space-y-1">
+                                        <p className="text-4xl font-bold text-white tracking-tighter">{avgProgress}%</p>
+                                        <p className="text-zinc-600 text-[9px] font-bold uppercase tracking-widest">Project Average</p>
+                                    </div>
+                                </div>
+                                <div className="h-[350px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={zones} layout="vertical" margin={{ left: 0, right: 30 }}>
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.03)" />
+                                            <XAxis type="number" domain={[0, 100]} hide />
+                                            <YAxis dataKey="name" type="category" width={100} fontSize={9} tickLine={false} axisLine={false} tick={{fill: '#52525b', fontWeight: 'bold'}} />
+                                            <Tooltip 
+                                                cursor={{fill: 'rgba(255,255,255,0.02)'}}
+                                                contentStyle={{ borderRadius: '20px', background: '#0a0a0a', border: '1px solid #18181b', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '15px' }}
+                                            />
+                                            <Bar dataKey="progress_percent" radius={[0, 20, 20, 0]} barSize={25} name="Completion %">
+                                                {zones.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color || '#3b82f6'} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="ledger" key="ledger" className="m-0 focus-visible:outline-none">
+                        <Card className="bg-zinc-900/20 border-none shadow-3xl overflow-hidden">
+                            <div className="max-h-[500px] overflow-y-auto no-scrollbar">
+                                <table className="w-full text-left">
+                                    <thead className="bg-zinc-950/80 sticky top-0 z-10">
+                                        <tr className="text-[9px] uppercase tracking-[0.3em] font-bold text-zinc-600 border-b border-zinc-900">
+                                            <th className="px-10 py-6">Event Context</th>
+                                            <th className="px-10 py-6">Sector</th>
+                                            <th className="px-10 py-6">Confidence</th>
+                                            <th className="px-10 py-6">Timestamp</th>
+                                            <th className="px-10 py-6 text-right">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-zinc-900/50">
+                                        {detections.map((det) => (
+                                            <tr key={det.id} className="hover:bg-white/5 transition-colors group">
+                                                <td className="px-10 py-6">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`h-2 w-2 rounded-full ${det.severity === 'high' ? 'bg-red-500' : 'bg-blue-500'}`} />
+                                                        <div className="space-y-1">
+                                                            <p className="text-[11px] font-bold text-white uppercase tracking-tight">{det.type.replace('_', ' ')}</p>
+                                                            <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">{det.details?.issue || 'Detected'}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-10 py-6 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{det.zones?.name || 'Unknown'}</td>
+                                                <td className="px-10 py-6 font-mono text-[10px] text-blue-500">{(det.details?.confidence * 100 || 94).toFixed(1)}%</td>
+                                                <td className="px-10 py-6 text-[10px] text-zinc-600 font-bold uppercase tracking-widest">{formatDistanceToNow(new Date(det.created_at))} ago</td>
+                                                <td className="px-10 py-6 text-right">
+                                                    <Badge variant="outline" className={`text-[8px] uppercase tracking-widest border-zinc-800 bg-zinc-900 px-3 py-1 ${det.severity === 'high' ? 'text-red-500' : 'text-blue-500'}`}>
+                                                        {det.severity}
+                                                    </Badge>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+                    </TabsContent>
+                </AnimatePresence>
             </Tabs>
 
-            {/* Velocity Trend Section */}
-            <Card className="border-none bg-zinc-900/40 border border-white/5 shadow-2xl">
-                <CardHeader className="border-b border-white/5 pb-6">
-                  <CardTitle className="text-xs font-bold uppercase tracking-[0.2em] flex items-center gap-3">
-                    <TrendingUp size={18} className="text-blue-500" />
-                    {t.velocity}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-10">
-                  <div className="h-[260px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={stats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
-                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
-                        <XAxis 
-                          dataKey="date" 
-                          fontSize={9} 
-                          tickLine={false} 
-                          axisLine={false} 
-                          tick={{fill: '#52525b', fontWeight: 'bold'}}
-                          tickFormatter={(val) => new Date(val).toLocaleDateString('en-US', { weekday: 'short' })} 
-                        />
-                        <YAxis fontSize={9} tickLine={false} axisLine={false} tick={{fill: '#52525b', fontWeight: 'bold'}} />
-                        <Tooltip 
-                          contentStyle={{ borderRadius: '16px', background: '#000', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
-                        />
-                        <Area type="monotone" dataKey="actual_velocity_mps" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorActual)" name="Actual MPS" />
-                        <Line type="monotone" dataKey="predicted_velocity_mps" stroke="#52525b" strokeWidth={2} strokeDasharray="6 6" dot={false} name="AI Predicted" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
+            {/* Velocity Trends */}
+            <Card className="bg-zinc-900/20 border-none shadow-3xl p-10">
+                <div className="space-y-10">
+                    <div className="flex justify-between items-center">
+                        <div className="space-y-2">
+                            <h3 className="text-xl font-bold text-white tracking-tight uppercase tracking-[0.1em]">{t.velocity}</h3>
+                            <p className="text-zinc-600 text-[10px] uppercase tracking-widest font-bold">Predictive vs actual project velocity</p>
+                        </div>
+                        <div className="flex gap-4">
+                            <div className="flex items-center gap-2">
+                                <div className="h-3 w-3 rounded-full bg-blue-600" />
+                                <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">Actual</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="h-3 w-3 rounded-full border border-zinc-700 border-dashed" />
+                                <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">AI Target</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="h-[280px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={stats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
+                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.02)" />
+                                <XAxis 
+                                    dataKey="date" 
+                                    fontSize={9} 
+                                    tickLine={false} 
+                                    axisLine={false} 
+                                    tick={{fill: '#3f3f46', fontWeight: 'bold'}}
+                                    tickFormatter={(val) => new Date(val).toLocaleDateString('en-US', { weekday: 'short' })} 
+                                />
+                                <YAxis fontSize={9} tickLine={false} axisLine={false} tick={{fill: '#3f3f46', fontWeight: 'bold'}} />
+                                <Tooltip 
+                                    contentStyle={{ borderRadius: '20px', background: '#0a0a0a', border: '1px solid #18181b', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '15px' }}
+                                />
+                                <Area type="monotone" dataKey="actual_velocity_mps" stroke="#3b82f6" strokeWidth={5} fillOpacity={1} fill="url(#colorActual)" name="Actual velocity" />
+                                <Line type="monotone" dataKey="predicted_velocity_mps" stroke="#27272a" strokeWidth={3} strokeDasharray="8 8" dot={false} name="AI Prediction" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
             </Card>
           </div>
 
-          {/* Right Content (Sidebar) */}
-          <div className="lg:col-span-4 space-y-8">
+          {/* Right Column - AI Insights & Alerts */}
+          <div className="lg:col-span-4 space-y-10">
             
-            {/* Predictive AI Card */}
-            <motion.div whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
-              <Card className="bg-blue-600 text-white border-none shadow-2xl shadow-blue-600/30 relative overflow-hidden group p-1">
-                 <div className="bg-white/10 p-7 rounded-[calc(var(--radius)-4px)] relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-10 pointer-events-none" 
-                         style={{backgroundImage: 'repeating-linear-gradient(45deg, #fff, #fff 1px, transparent 1px, transparent 15px)', backgroundSize: '20px 20px'}} />
-                    
-                    <div className="relative z-10">
-                      <div className="bg-white/20 w-fit p-2.5 rounded-xl mb-6 backdrop-blur-md">
-                          <Zap size={22} className="text-white fill-white" />
-                      </div>
-                      <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/70 mb-4">{t.aiInsights}</h3>
-                      <p className="text-xl md:text-2xl leading-tight font-bold mb-10 tracking-tight">
-                          {t.recommendation}
-                      </p>
-                      
-                      <div className="space-y-6">
-                          <div className="flex items-center gap-3">
-                             <div className="h-2 w-2 rounded-full bg-blue-300 animate-ping" />
-                             <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">AWS Bedrock Engine • Active</span>
-                          </div>
-                          <Button variant="secondary" className="w-full h-12 text-[10px] uppercase tracking-[0.2em] font-bold bg-white text-blue-600 hover:bg-zinc-100 border-none rounded-full shadow-2xl transition-all transform hover:scale-[1.02]">
-                            {t.viewFull}
-                          </Button>
-                      </div>
+            {/* AI Predictive Intelligence Section */}
+            <motion.div whileHover={{ y: -5 }}>
+                <Card className="bg-blue-600 text-white border-none shadow-3xl shadow-blue-600/20 p-1">
+                    <div className="bg-[#050505]/10 p-10 rounded-[40px] relative overflow-hidden">
+                        <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-white/10 blur-[60px] rounded-full pointer-events-none" />
+                        
+                        <div className="relative z-10 space-y-10">
+                            <div className="flex justify-between items-center">
+                                <div className="bg-white/20 p-4 rounded-3xl backdrop-blur-md">
+                                    <BrainCircuit size={24} className="text-white" />
+                                </div>
+                                <Badge className="bg-white/20 text-white border-none text-[8px] uppercase tracking-widest font-bold px-4 h-7">Autonomous Mode</Badge>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <h3 className="text-[10px] font-bold uppercase tracking-[0.4em] text-white/60">{t.aiInsights}</h3>
+                                <p className="text-2xl md:text-3xl font-bold tracking-tight leading-[1.1]">
+                                    {t.recommendation}
+                                </p>
+                            </div>
+
+                            <div className="pt-6 space-y-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-2 w-2 rounded-full bg-white animate-ping" />
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-white/60">Aragorn LLM Engine • Analyzing Trends</span>
+                                </div>
+                                <Button className="w-full h-16 bg-white text-blue-600 hover:bg-zinc-100 rounded-full font-bold uppercase tracking-[0.2em] text-[10px] shadow-2xl transition-all transform hover:scale-[1.02]">
+                                    Resolve Strategic Conflict
+                                </Button>
+                            </div>
+                        </div>
                     </div>
-                 </div>
-              </Card>
+                </Card>
             </motion.div>
 
-            {/* Critical Alerts Card */}
-            <Card className="border-none bg-zinc-900/40 border border-white/5 shadow-2xl">
-              <CardHeader className="flex flex-row items-center justify-between border-b border-white/5 px-6 py-5">
-                <CardTitle className="text-xs font-bold uppercase tracking-widest flex items-center gap-3">
-                  <AlertTriangle size={18} className="text-red-500" />
-                  {t.alerts}
-                </CardTitle>
-                {alerts.filter(a => !a.is_resolved).length > 0 && (
-                   <Badge className="bg-red-500/10 text-red-500 border-none text-[8px] uppercase tracking-widest animate-pulse px-2">{alerts.filter(a => !a.is_resolved).length} Unresolved</Badge>
-                )}
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="max-h-[500px] overflow-y-auto no-scrollbar">
-                  {alerts.length > 0 ? alerts.slice(0, 10).map((alert) => (
-                    <div key={alert.id} className="p-6 flex gap-5 hover:bg-white/5 transition-colors border-b border-white/5 last:border-0 group relative">
-                      <div className={`h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg transition-transform group-hover:scale-105 ${
-                        alert.severity === 'high' ? 'bg-red-600 text-white' : 
-                        alert.severity === 'medium' ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white'
-                      }`}>
-                        {alert.type === 'safety' ? <HardHat size={22} /> : 
-                         alert.type === 'progress' ? <Construction size={22} /> : <PackageCheck size={22} />}
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <div className="flex justify-between items-start">
-                          <p className="text-[13px] font-bold tracking-tight text-white leading-tight pr-8">{alert.message}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">{formatDistanceToNow(new Date(alert.created_at))} ago</span>
-                          <div className="h-1 w-1 rounded-full bg-zinc-800" />
-                          <Badge variant="secondary" className="text-[8px] uppercase tracking-widest h-4 px-2 rounded-sm bg-zinc-800 border-none font-bold text-zinc-400">{alert.severity}</Badge>
-                        </div>
-                        
-                        <Button variant="ghost" className="absolute top-6 right-6 h-auto p-0 opacity-0 group-hover:opacity-100 transition-opacity text-zinc-600 hover:text-white text-[9px] font-bold uppercase tracking-widest">
-                          Dismiss
-                        </Button>
-                      </div>
+            {/* Critical Real-time Alerts */}
+            <Card className="bg-zinc-900/20 border-none shadow-3xl overflow-hidden">
+                <CardHeader className="p-10 border-b border-zinc-900 flex flex-row items-center justify-between">
+                    <div className="space-y-1">
+                        <CardTitle className="text-[11px] font-bold uppercase tracking-[0.3em] flex items-center gap-3">
+                            <AlertTriangle size={18} className="text-red-500" />
+                            {t.alerts}
+                        </CardTitle>
                     </div>
-                  )) : (
-                    <div className="py-24 text-center text-xs text-zinc-600 uppercase tracking-widest font-bold opacity-30">All systems clear</div>
-                  )}
-                </div>
-                <Button variant="ghost" className="w-full rounded-t-none text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold py-6 hover:bg-white/5 border-t border-white/5 transition-all">
-                  Archive History
-                </Button>
-              </CardContent>
+                    {alerts.length > 0 && <span className="bg-red-500/10 text-red-500 text-[8px] font-bold uppercase px-3 py-1 rounded-sm animate-pulse">{alerts.length} Active</span>}
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="max-h-[550px] overflow-y-auto no-scrollbar">
+                        {alerts.length > 0 ? alerts.map((alert, i) => (
+                            <div key={alert.id} className="p-10 border-b border-zinc-900/50 last:border-0 hover:bg-white/[0.02] transition-colors relative group">
+                                <div className="flex gap-8">
+                                    <div className={`h-14 w-14 rounded-3xl flex items-center justify-center shrink-0 shadow-2xl transition-transform group-hover:scale-110 ${
+                                        alert.severity === 'high' ? 'bg-red-600 text-white' : 
+                                        alert.severity === 'medium' ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white'
+                                    }`}>
+                                        {alert.type === 'safety' ? <HardHat size={22} /> : 
+                                         alert.type === 'progress' ? <Construction size={22} /> : <PackageCheck size={22} />}
+                                    </div>
+                                    <div className="space-y-3 pt-1">
+                                        <p className="text-[13px] font-bold tracking-tight text-white leading-tight pr-10">{alert.message}</p>
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">{formatDistanceToNow(new Date(alert.created_at))} ago</span>
+                                            <Badge className={`bg-zinc-900 border-zinc-800 text-[8px] font-bold uppercase px-2 h-5 tracking-widest ${alert.severity === 'high' ? 'text-red-500' : 'text-zinc-500'}`}>{alert.severity}</Badge>
+                                        </div>
+                                    </div>
+                                </div>
+                                <Button variant="ghost" className="absolute top-10 right-10 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-zinc-700 hover:text-white text-[9px] font-bold uppercase tracking-widest">
+                                    Ignore
+                                </Button>
+                            </div>
+                        )) : (
+                            <div className="py-32 text-center text-zinc-800 uppercase tracking-[0.8em] font-bold text-[10px]">No Active Violations</div>
+                        )}
+                    </div>
+                    <Button variant="ghost" className="w-full rounded-none h-20 text-[10px] uppercase font-bold tracking-[0.3em] text-zinc-700 hover:bg-white/5 border-t border-zinc-900">
+                        Historical Log Archive
+                    </Button>
+                </CardContent>
             </Card>
 
-            {/* Compliance Trend Line Chart */}
-            <Card className="border-none bg-zinc-900/40 border border-white/5 shadow-2xl">
-              <CardHeader className="px-6 pt-6">
-                <CardTitle className="text-xs font-bold uppercase tracking-widest flex items-center gap-3">
-                  <ShieldCheck size={18} className="text-green-500" />
-                  {t.complianceTrend}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-6 pb-6">
-                <div className="h-[140px] w-full pt-4">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={stats}>
-                      <Tooltip 
-                        contentStyle={{ borderRadius: '12px', background: '#000', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '10px', fontWeight: 'bold' }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="safety_compliance_percent" 
-                        stroke="#10b981" 
-                        strokeWidth={4} 
-                        dot={false}
-                        activeDot={{ r: 5, strokeWidth: 0, fill: '#10b981' }} 
-                        name="Compliance %"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+            {/* Site Inventory Status */}
+            <Card className="bg-zinc-900/20 border-none shadow-3xl p-10">
+                <div className="space-y-8">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] flex items-center gap-3 text-white">
+                            <PackageCheck size={18} className="text-blue-500" />
+                            {t.materials}
+                        </h3>
+                        <Button variant="ghost" className="h-auto p-0 text-[9px] font-bold uppercase tracking-widest text-zinc-600 hover:text-white">Expand</Button>
+                    </div>
+                    <div className="space-y-6">
+                        {materials.slice(0, 3).map((mat, i) => (
+                            <div key={i} className="flex justify-between items-center bg-zinc-950/40 p-5 rounded-2xl border border-white/5 group hover:border-blue-500/20 transition-all">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-white uppercase tracking-widest">{mat.material_name}</p>
+                                    <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.2em]">{mat.quantity}</p>
+                                </div>
+                                <Badge className={`bg-zinc-900 border-none text-[8px] font-bold uppercase px-3 h-7 tracking-widest ${mat.status === 'verified' ? 'text-green-500' : 'text-red-500'}`}>
+                                    {mat.status}
+                                </Badge>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-                <div className="mt-6 flex justify-between items-center text-[9px] uppercase tracking-[0.2em] font-bold">
-                  <div className="flex items-center gap-2 text-green-500">
-                    <TrendingUp size={12} />
-                    {t.growth}
-                  </div>
-                  <div className="text-zinc-600">{t.last24}</div>
-                </div>
-              </CardContent>
             </Card>
 
           </div>
         </div>
+
+        {/* Global Footer Overlay */}
+        <footer className="pt-20 pb-10 flex flex-col md:flex-row justify-between items-center gap-10 opacity-40 hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.5em] text-zinc-600">
+                <Construction size={14} className="text-blue-600" />
+                <span>Aragorn AI Construction Platform © 2026</span>
+            </div>
+            <div className="flex gap-10 text-[9px] font-bold uppercase tracking-widest text-zinc-600">
+                <a href="#" className="hover:text-blue-500 transition-colors">Safety Protocol</a>
+                <a href="#" className="hover:text-blue-500 transition-colors">Edge Documentation</a>
+                <a href="#" className="hover:text-blue-500 transition-colors">System Health</a>
+            </div>
+        </footer>
       </div>
 
       <style jsx global>{`
         @keyframes scan {
-          from { transform: translateY(-100%); }
-          to { transform: translateY(300%); }
+          0% { transform: translateY(0); }
+          50% { transform: translateY(100vh); }
+          100% { transform: translateY(0); }
         }
         
         .no-scrollbar::-webkit-scrollbar {
@@ -756,11 +737,23 @@ export default function AragornDashboard() {
 
         .rtl {
           direction: rtl;
-          text-align: right;
         }
         .ltr {
           direction: ltr;
-          text-align: left;
+        }
+
+        @font-face {
+            font-family: 'Tesla';
+            src: local('Gotham'), local('Arial');
+        }
+
+        body {
+            background-color: #050505;
+            color: white;
+        }
+
+        .shadow-3xl {
+            box-shadow: 0 40px 100px -20px rgba(0,0,0,0.8);
         }
       `}</style>
     </div>
