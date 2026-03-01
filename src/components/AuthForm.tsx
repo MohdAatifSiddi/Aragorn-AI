@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { login, signup } from "@/app/auth/actions";
+import { login, signup } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,6 +43,8 @@ export function AuthForm({ mode }: AuthFormProps) {
           toast.error(result.error);
         } else {
           toast.success("Welcome back!");
+          router.push("/dashboard");
+          router.refresh();
         }
       }
     });
@@ -140,7 +142,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           <span className="w-full border-t border-zinc-900" />
         </div>
         <div className="relative flex justify-center text-[9px] uppercase font-bold tracking-widest">
-          <span className="bg-[#0a0a0a] px-4 text-zinc-700">Or continue with</span>
+          <span className="bg-[#050505] px-4 text-zinc-700">Or continue with</span>
         </div>
       </div>
 

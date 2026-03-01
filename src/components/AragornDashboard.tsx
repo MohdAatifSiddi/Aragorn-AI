@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { logout } from "@/app/auth/actions";
+import { logout } from "@/app/actions";
 import { 
   ShieldCheck, 
   Construction, 
@@ -46,7 +46,6 @@ import {
 } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -145,7 +144,11 @@ export default function AragornDashboard() {
   }, [fetchInitialData]);
 
   const handleLogout = async () => {
-    await logout();
+    const result = await logout();
+    if (result.success) {
+      router.push("/login");
+      router.refresh();
+    }
   };
 
   const refreshData = () => {
@@ -273,10 +276,10 @@ export default function AragornDashboard() {
               <Construction className="h-6 w-6 text-white" />
             </motion.div>
             <div className="space-y-1">
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white uppercase flex items-center gap-4">
-                {t.title}
-                <Badge variant="outline" className="text-[9px] uppercase tracking-[0.4em] border-zinc-800 text-zinc-500 bg-zinc-900/50 px-4 py-1">Enterprise Link</Badge>
-              </h1>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white uppercase flex items-center gap-4">
+                  {t.title}
+                  <span className="text-[9px] uppercase tracking-[0.4em] border border-zinc-800 text-zinc-500 bg-zinc-900/50 px-4 py-1 rounded-full">Enterprise Link</span>
+                </h1>
               <div className="flex items-center gap-3">
                 <MapPin className="h-3 w-3 text-blue-500" />
                 <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-[0.2em]">{selectedSite?.name || "Global"} • {selectedSite?.location || "India"}</p>
@@ -312,15 +315,69 @@ export default function AragornDashboard() {
                 </Button>
             </div>
 
-            <Button 
-              variant="outline" 
-              onClick={refreshData}
-              className="rounded-full border-zinc-800 bg-zinc-900/30 hover:bg-zinc-800 h-10 w-10 p-0 transition-transform active:rotate-180 duration-500"
-            >
-              <RefreshCcw className="h-4 w-4 text-zinc-400" />
-            </Button>
+              <Button 
+                variant="outline" 
+                onClick={refreshData}
+                className="rounded-full border-zinc-800 bg-zinc-900/30 hover:bg-zinc-800 h-10 w-10 p-0 transition-transform active:rotate-180 duration-500"
+              >
+                <RefreshCcw className="h-4 w-4 text-zinc-400" />
+              </Button>
 
-            <div className="flex items-center gap-4 bg-zinc-900/80 p-1.5 pr-6 rounded-full border border-zinc-800 shadow-2xl ml-auto">
+              <Button 
+                variant="outline" 
+                onClick={async () => {
+                    if (!selectedSite) return;
+                    toast.info("Triggering Edge Simulation...");
+                    try {
+                        const event_type = ['PPE', 'PROGRESS', 'MATERIAL'][Math.floor(Math.random() * 3)];
+                        let payload = {};
+                        let zoneId = zones[Math.floor(Math.random() * zones.length)]?.id;
+                        
+                        if (event_type === 'PPE') {
+                            payload = {
+                                violation: "NO_HELMET",
+                                severity: "high",
+                                details: "Visual identification of worker without hard hat.",
+                                confidence: 0.98
+                            };
+                        } else if (event_type === 'PROGRESS') {
+                            payload = {
+                                progress_percent: Math.min(100, (zones.find(z => z.id === zoneId)?.progress_percent || 0) + 10),
+                                zone_name: zones.find(z => z.id === zoneId)?.name
+                            };
+                        } else {
+                            const materials = ["Structural Steel", "Portland Cement", "Copper Wiring"];
+                            payload = {
+                                name: materials[Math.floor(Math.random() * materials.length)],
+                                quantity: "5 Tons",
+                                status: "verified"
+                            };
+                        }
+
+                        const res = await fetch('/api/edge/ingest', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                siteId: selectedSite.id,
+                                zoneId,
+                                type: event_type,
+                                payload
+                            })
+                        });
+                        const data = await res.json();
+                        if (data.success) toast.success(`Edge Event: ${event_type} Reported`);
+                        else toast.error(data.error);
+                    } catch (e) {
+                        toast.error("Failed to trigger simulation");
+                    }
+                }}
+                className="rounded-full border-blue-600/30 bg-blue-600/10 hover:bg-blue-600/20 px-5 text-[9px] font-bold uppercase tracking-widest h-10 flex items-center gap-2"
+              >
+                <Zap className="h-3 w-3 text-blue-500" />
+                Simulate Edge
+              </Button>
+
+              <div className="flex items-center gap-4 bg-zinc-900/80 p-1.5 pr-6 rounded-full border border-zinc-800 shadow-2xl ml-auto">
                <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-[11px] shadow-lg shadow-blue-600/20">
                  {user?.email?.[0].toUpperCase()}
                </div>
@@ -529,11 +586,11 @@ export default function AragornDashboard() {
                                                 <td className="px-10 py-6 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{det.zones?.name || 'Unknown'}</td>
                                                 <td className="px-10 py-6 font-mono text-[10px] text-blue-500">{(det.details?.confidence * 100 || 94).toFixed(1)}%</td>
                                                 <td className="px-10 py-6 text-[10px] text-zinc-600 font-bold uppercase tracking-widest">{formatDistanceToNow(new Date(det.created_at))} ago</td>
-                                                <td className="px-10 py-6 text-right">
-                                                    <Badge variant="outline" className={`text-[8px] uppercase tracking-widest border-zinc-800 bg-zinc-900 px-3 py-1 ${det.severity === 'high' ? 'text-red-500' : 'text-blue-500'}`}>
-                                                        {det.severity}
-                                                    </Badge>
-                                                </td>
+                                                  <td className="px-10 py-6 text-right">
+                                                      <span className={`text-[8px] uppercase tracking-widest border border-zinc-800 bg-zinc-900 px-3 py-1 rounded-full ${det.severity === 'high' ? 'text-red-500' : 'text-blue-500'}`}>
+                                                          {det.severity}
+                                                      </span>
+                                                  </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -608,7 +665,7 @@ export default function AragornDashboard() {
                                 <div className="bg-white/20 p-4 rounded-3xl backdrop-blur-md">
                                     <BrainCircuit size={24} className="text-white" />
                                 </div>
-                                <Badge className="bg-white/20 text-white border-none text-[8px] uppercase tracking-widest font-bold px-4 h-7">Autonomous Mode</Badge>
+                                <span className="bg-white/20 text-white border border-white/20 text-[8px] uppercase tracking-widest font-bold px-4 h-7 flex items-center justify-center rounded-full">Autonomous Mode</span>
                             </div>
                             
                             <div className="space-y-4">
@@ -659,7 +716,7 @@ export default function AragornDashboard() {
                                         <p className="text-[13px] font-bold tracking-tight text-white leading-tight pr-10">{alert.message}</p>
                                         <div className="flex items-center gap-4">
                                             <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">{formatDistanceToNow(new Date(alert.created_at))} ago</span>
-                                            <Badge className={`bg-zinc-900 border-zinc-800 text-[8px] font-bold uppercase px-2 h-5 tracking-widest ${alert.severity === 'high' ? 'text-red-500' : 'text-zinc-500'}`}>{alert.severity}</Badge>
+                                            <span className={`bg-zinc-900 border border-zinc-800 text-[8px] font-bold uppercase px-2 h-5 tracking-widest flex items-center rounded-full ${alert.severity === 'high' ? 'text-red-500' : 'text-zinc-500'}`}>{alert.severity}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -694,9 +751,9 @@ export default function AragornDashboard() {
                                     <p className="text-[10px] font-bold text-white uppercase tracking-widest">{mat.material_name}</p>
                                     <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.2em]">{mat.quantity}</p>
                                 </div>
-                                <Badge className={`bg-zinc-900 border-none text-[8px] font-bold uppercase px-3 h-7 tracking-widest ${mat.status === 'verified' ? 'text-green-500' : 'text-red-500'}`}>
+                                <span className={`bg-zinc-900 border border-zinc-800 text-[8px] font-bold uppercase px-3 h-7 tracking-widest flex items-center rounded-full ${mat.status === 'verified' ? 'text-green-500' : 'text-red-500'}`}>
                                     {mat.status}
-                                </Badge>
+                                </span>
                             </div>
                         ))}
                     </div>

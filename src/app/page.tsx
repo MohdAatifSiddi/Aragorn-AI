@@ -19,7 +19,6 @@ import {
   Layers3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useRef } from "react";
 
 export default function LandingPage() {
@@ -168,7 +167,7 @@ export default function LandingPage() {
             <div className="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-32 items-center">
                 <div className="space-y-12 text-left">
                     <div className="space-y-4">
-                        <Badge className="bg-blue-600/10 text-blue-500 border-none text-[10px] uppercase font-bold tracking-[0.3em] px-5 py-1.5 h-auto">Enterprise Core</Badge>
+                        <span className="bg-blue-600/10 text-blue-500 border border-blue-600/20 rounded-full text-[10px] uppercase font-bold tracking-[0.3em] px-5 py-1.5 h-auto w-fit">Enterprise Core</span>
                         <h2 className="text-5xl md:text-7xl font-bold tracking-tight text-white leading-[1.05]">Autonomous Construction Intelligence</h2>
                     </div>
                     <p className="text-zinc-400 text-xl leading-relaxed max-w-xl">
