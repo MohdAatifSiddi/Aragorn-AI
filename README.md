@@ -112,18 +112,6 @@ Visit `http://localhost:3000` and start analyzing construction sites!
 
 ---
 
-## ⚔️ THE ARAGORN ADVANTAGE
-
-| Challenge | ❌ Traditional Tools | ✅ Aragorn AI |
-|:----------|:-------------------:|:------------:|
-| **Internet Dependency** | ☁️ Cloud-only | ⚡ **Edge-First** |
-| **Cost Structure** | 💰 Enterprise-priced | ✅ **Affordable** |
-| **Privacy Model** | 📤 Upload everything | 🔒 **Blur Locally** |
-| **Language Support** | 🇬🇧 English-only | 🌍 **Multilingual** |
-| **Intelligence** | 🔄 Reactive | 🎯 **Predictive** |
-
----
-
 ## 🎨 DESIGN PRINCIPLES
 
 ### 🏎️ **EDGE-FIRST**
@@ -292,15 +280,5 @@ REAL intelligence, where the work happens.
 ## 📄 LICENSE
 
 MIT License - See LICENSE file for details
-
----
-
-## 📧 CONTACT
-
-For questions, support, or partnerships:
-- Email: [contact@aragorn.ai](mailto:contact@aragorn.ai)
-- Website: [aragorn.ai](https://aragorn.ai)
-
----
 
 **⚡ ARAGORN AI - Autonomous Construction Intelligence**
