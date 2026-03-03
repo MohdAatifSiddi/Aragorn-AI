@@ -1,3 +1,48 @@
+/**
+ * Git Ignore Configuration
+ * 
+ * Specifies files and directories that Git should ignore.
+ * These files are not tracked in version control.
+ * 
+ * Categories:
+ * 
+ * 1. Dependencies
+ *    - node_modules/ - NPM packages (reinstall with npm install)
+ *    - .pnp.* - Yarn Plug'n'Play files
+ *    - .yarn/* - Yarn cache (except patches, plugins, releases, versions)
+ * 
+ * 2. Testing
+ *    - coverage/ - Test coverage reports
+ * 
+ * 3. Next.js Build Output
+ *    - .next/ - Development and production builds
+ *    - out/ - Static export output
+ * 
+ * 4. Production Builds
+ *    - build/ - Generic build output
+ * 
+ * 5. System Files
+ *    - .DS_Store - macOS folder metadata
+ *    - *.pem - Private keys and certificates
+ * 
+ * 6. Debug Logs
+ *    - npm-debug.log* - NPM error logs
+ *    - yarn-debug.log* - Yarn error logs
+ *    - yarn-error.log* - Yarn error logs
+ *    - .pnpm-debug.log* - PNPM debug logs
+ * 
+ * 7. Deployment
+ *    - .vercel - Vercel deployment configuration
+ * 
+ * 8. TypeScript
+ *    - *.tsbuildinfo - TypeScript incremental build cache
+ *    - next-env.d.ts - Next.js TypeScript declarations (auto-generated)
+ * 
+ * Note: Environment variables (.env.local) should be added manually if needed
+ * 
+ * @see https://git-scm.com/docs/gitignore
+ */
+
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies

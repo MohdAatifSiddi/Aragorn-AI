@@ -1,3 +1,30 @@
+/**
+ * ImageUpload Component
+ * 
+ * Handles construction site image uploads with real-time AI analysis.
+ * 
+ * Features:
+ * - Drag & drop or click to upload images
+ * - Client-side validation (file type, size)
+ * - Upload to AWS S3 via API
+ * - Automatic AI analysis using AWS Rekognition
+ * - Real-time PPE violation detection
+ * - Safety score calculation
+ * - Visual feedback with animations
+ * - Dashboard data refresh on completion
+ * 
+ * Flow:
+ * 1. User selects image file
+ * 2. Client validates file (type, size)
+ * 3. Image preview displayed
+ * 4. Upload to S3 via /api/upload
+ * 5. Trigger AI analysis via /api/analyze
+ * 6. Display results (safety score, violations, detections)
+ * 7. Refresh dashboard data
+ * 
+ * @component
+ */
+
 "use client";
 
 import React, { useState, useRef } from "react";
@@ -7,50 +34,76 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
+/**
+ * Props for ImageUpload component
+ */
 interface ImageUploadProps {
+  /** Site ID for associating uploaded images */
   siteId: string;
+  /** Optional zone ID for more specific location tracking */
   zoneId?: string;
+  /** Callback fired when upload and analysis complete */
   onUploadComplete?: (result: any) => void;
 }
 
+/**
+ * ImageUpload Component
+ * Provides UI for uploading construction site images and viewing AI analysis results
+ */
 export default function ImageUpload({ siteId, zoneId, onUploadComplete }: ImageUploadProps) {
-  const [uploading, setUploading] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [result, setResult] = useState<any>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // State management for upload flow
+  const [uploading, setUploading] = useState(false); // S3 upload in progress
+  const [analyzing, setAnalyzing] = useState(false); // AI analysis in progress
+  const [preview, setPreview] = useState<string | null>(null); // Base64 image preview
+  const [result, setResult] = useState<any>(null); // Analysis results from API
+  const fileInputRef = useRef<HTMLInputElement>(null); // Reference to hidden file input
 
+  /**
+   * Handles file selection and triggers upload + analysis pipeline
+   * 
+   * Process:
+   * 1. Validate file type and size
+   * 2. Generate preview
+   * 3. Upload to S3
+   * 4. Trigger AI analysis
+   * 5. Display results
+   * 6. Notify parent component
+   * 
+   * @param event - File input change event
+   */
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
+    // VALIDATION 1: Check file type (must be image)
     if (!file.type.startsWith('image/')) {
       toast.error('Please select an image file');
       return;
     }
 
-    // Validate file size (max 10MB)
+    // VALIDATION 2: Check file size (max 10MB for AWS Rekognition)
     if (file.size > 10 * 1024 * 1024) {
       toast.error('Image size must be less than 10MB');
       return;
     }
 
-    // Show preview
+    // Generate base64 preview for immediate visual feedback
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreview(reader.result as string);
     };
     reader.readAsDataURL(file);
 
-    // Upload to S3
+    // STEP 1: Upload image to AWS S3
     setUploading(true);
     try {
+      // Prepare multipart form data with file and metadata
       const formData = new FormData();
       formData.append('file', file);
       formData.append('siteId', siteId);
       if (zoneId) formData.append('zoneId', zoneId);
 
+      // Call upload API endpoint (uploads to S3 and creates DB record)
       const uploadRes = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
@@ -58,6 +111,7 @@ export default function ImageUpload({ siteId, zoneId, onUploadComplete }: ImageU
 
       const uploadData = await uploadRes.json();
 
+      // Handle upload errors
       if (!uploadData.success) {
         throw new Error(uploadData.error || 'Upload failed');
       }
@@ -65,14 +119,16 @@ export default function ImageUpload({ siteId, zoneId, onUploadComplete }: ImageU
       toast.success('Image uploaded successfully');
       setUploading(false);
 
-      // Trigger analysis
+      // STEP 2: Trigger AI analysis with AWS Rekognition
       setAnalyzing(true);
+      
+      // Call analyze API endpoint (runs AWS Rekognition detection)
       const analyzeRes = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          imageId: uploadData.imageId,
-          s3Key: uploadData.imageUrl.split('.com/')[1],
+          imageId: uploadData.imageId, // Database record ID
+          s3Key: uploadData.imageUrl.split('.com/')[1], // S3 object key
           siteId,
           zoneId,
         }),
@@ -80,6 +136,7 @@ export default function ImageUpload({ siteId, zoneId, onUploadComplete }: ImageU
 
       const analyzeData = await analyzeRes.json();
 
+      // Handle analysis errors
       if (!analyzeData.success) {
         throw new Error(analyzeData.error || 'Analysis failed');
       }
@@ -87,26 +144,29 @@ export default function ImageUpload({ siteId, zoneId, onUploadComplete }: ImageU
       setResult(analyzeData);
       setAnalyzing(false);
 
-      // Show results
+      // STEP 3: Display results with appropriate toast notification
       const summary = analyzeData.summary;
+      
+      // Show error toast if violations detected
       if (summary.violations > 0) {
         toast.error(`⚠️ ${summary.violations} PPE violation(s) detected!`, {
           description: `Safety Score: ${summary.safetyScore}%`,
           duration: 8000,
         });
       } else {
+        // Show success toast if all workers compliant
         toast.success(`✅ All clear! Safety Score: ${summary.safetyScore}%`, {
           description: `${summary.personsDetected} person(s) detected with proper PPE`,
           duration: 5000,
         });
       }
 
-      // Trigger callback to refresh dashboard data
+      // STEP 4: Notify parent component (dashboard) to refresh data
       if (onUploadComplete) {
         onUploadComplete(analyzeData);
       }
 
-      // Auto-refresh after 2 seconds to show updated stats
+      // Auto-refresh after 2 seconds to ensure all DB updates are reflected
       setTimeout(() => {
         if (onUploadComplete) {
           onUploadComplete({ refresh: true });
@@ -114,6 +174,7 @@ export default function ImageUpload({ siteId, zoneId, onUploadComplete }: ImageU
       }, 2000);
 
     } catch (error: any) {
+      // Handle any errors in the upload/analysis pipeline
       console.error('Upload/Analysis error:', error);
       toast.error(error.message || 'Failed to process image');
       setUploading(false);
@@ -121,6 +182,10 @@ export default function ImageUpload({ siteId, zoneId, onUploadComplete }: ImageU
     }
   };
 
+  /**
+   * Resets the component state to allow new upload
+   * Clears preview, results, and file input
+   */
   const handleReset = () => {
     setPreview(null);
     setResult(null);

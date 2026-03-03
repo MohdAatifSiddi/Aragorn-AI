@@ -1,14 +1,34 @@
+/**
+ * Login Page
+ * 
+ * Provides the authentication interface for users to sign in to the Aragorn AI platform.
+ * 
+ * Features:
+ * - Clean, minimal design with brand identity
+ * - Decorative background elements
+ * - Link back to home page
+ * - Reusable AuthForm component
+ * - Responsive layout
+ * 
+ * @page /login
+ */
+
 import { AuthForm } from "@/components/AuthForm";
 import Link from "next/link";
 import { Construction } from "lucide-react";
 
+/**
+ * LoginPage Component
+ * Renders the login page with authentication form
+ */
 export default function LoginPage() {
   return (
     <main className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Background Decorative Elements */}
+      {/* Background Decorative Elements - Subtle gradient blurs for visual depth */}
       <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-blue-600/5 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] rounded-full bg-blue-900/10 blur-[100px] pointer-events-none" />
       
+      {/* Brand Logo - Top left corner with link to home */}
       <div className="absolute top-10 left-10 z-20">
         <Link href="/" className="flex items-center gap-3 group">
           <div className="p-2 bg-zinc-900/80 rounded-xl group-hover:scale-110 transition-transform">
@@ -18,10 +38,12 @@ export default function LoginPage() {
         </Link>
       </div>
       
+      {/* Main Content - Authentication Form */}
       <div className="w-full relative z-10">
         <AuthForm mode="login" />
       </div>
 
+      {/* Footer - Version indicator */}
       <div className="absolute bottom-10 text-[10px] uppercase tracking-[0.5em] text-zinc-800 font-bold select-none pointer-events-none">
         Secure Auth • v4.2.0
       </div>

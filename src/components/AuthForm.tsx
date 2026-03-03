@@ -1,3 +1,35 @@
+/**
+ * AuthForm Component
+ * 
+ * Reusable authentication form supporting both login and signup modes.
+ * 
+ * Features:
+ * - Email/password authentication
+ * - OAuth providers (GitHub, Azure)
+ * - Form validation
+ * - Loading states
+ * - Error handling with toast notifications
+ * - Smooth animations with Framer Motion
+ * - Responsive design
+ * - Mode switching (login ↔ signup)
+ * 
+ * Authentication Flow:
+ * 1. User enters credentials
+ * 2. Form submits to server actions (login/signup)
+ * 3. Server validates and creates/verifies session
+ * 4. Success: Redirect to dashboard
+ * 5. Error: Display toast notification
+ * 
+ * OAuth Flow:
+ * 1. User clicks OAuth provider button
+ * 2. Redirect to provider's auth page
+ * 3. Provider redirects to /auth/callback
+ * 4. Callback exchanges code for session
+ * 5. Redirect to dashboard
+ * 
+ * @component
+ */
+
 "use client";
 
 import { useState, useTransition } from "react";
@@ -12,25 +44,47 @@ import { Loader2, Construction, Mail, Lock, ArrowRight, Github } from "lucide-re
 import Link from "next/link";
 import { motion } from "framer-motion";
 
+/**
+ * Props for AuthForm component
+ */
 interface AuthFormProps {
+  /** Authentication mode - determines form behavior and text */
   mode: "login" | "signup";
 }
 
+/**
+ * AuthForm Component
+ * Handles user authentication with email/password or OAuth
+ */
 export function AuthForm({ mode }: AuthFormProps) {
+  // Form state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  
+  // Loading state using React transition for better UX
   const [isPending, startTransition] = useTransition();
+  
+  // Router for programmatic navigation
   const router = useRouter();
 
+  /**
+   * Handles form submission for email/password authentication
+   * Uses server actions for secure authentication
+   * 
+   * @param e - Form submit event
+   */
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Use transition to show loading state
     startTransition(async () => {
+      // Prepare form data for server action
       const formData = new FormData();
       formData.append("email", email);
       formData.append("password", password);
 
       if (mode === "signup") {
+        // Call signup server action
         const result = await signup(formData);
         if (result?.error) {
           toast.error(result.error);
@@ -38,23 +92,32 @@ export function AuthForm({ mode }: AuthFormProps) {
           toast.success("Check your email for confirmation!");
         }
       } else {
+        // Call login server action
         const result = await login(formData);
         if (result?.error) {
           toast.error(result.error);
         } else {
           toast.success("Welcome back!");
+          // Redirect to dashboard on successful login
           router.push("/dashboard");
-          router.refresh();
+          router.refresh(); // Refresh to update server components
         }
       }
     });
   };
 
+  /**
+   * Handles OAuth authentication with external providers
+   * Redirects to provider's auth page, then back to /auth/callback
+   * 
+   * @param provider - OAuth provider ('google' | 'github')
+   */
   const handleOAuth = async (provider: 'google' | 'github') => {
     try {
         const { error } = await supabase.auth.signInWithOAuth({
             provider,
             options: {
+                // Redirect back to our callback handler after auth
                 redirectTo: `${window.location.origin}/auth/callback`,
             }
         });

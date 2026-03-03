@@ -1,3 +1,64 @@
+/**
+ * Vercel Ignore Configuration
+ * 
+ * Specifies files and directories to exclude from Vercel deployments.
+ * This reduces deployment size and speeds up builds.
+ * 
+ * Similar to .gitignore but specifically for Vercel deployments.
+ * Files listed here won't be uploaded to Vercel's build environment.
+ * 
+ * Categories:
+ * 
+ * 1. Dependencies (not needed - Vercel installs fresh)
+ *    - node_modules/ - NPM packages
+ *    - .pnp, .pnp.js - Yarn Plug'n'Play
+ * 
+ * 2. Testing (not needed in production)
+ *    - coverage/ - Test coverage reports
+ * 
+ * 3. Next.js Build Output (rebuilt on Vercel)
+ *    - .next/ - Development/production builds
+ *    - out/ - Static export output
+ * 
+ * 4. Production Builds (rebuilt on Vercel)
+ *    - build/, dist/ - Generic build directories
+ * 
+ * 5. System Files (not needed)
+ *    - .DS_Store - macOS metadata
+ *    - *.pem - Private keys (should be in env vars)
+ * 
+ * 6. Debug Logs (not needed)
+ *    - npm-debug.log*, yarn-debug.log*, yarn-error.log*
+ * 
+ * 7. Local Environment Files (use Vercel env vars instead)
+ *    - .env.local - Local development variables
+ *    - .env.development.local - Development overrides
+ *    - .env.test.local - Test environment
+ *    - .env.production.local - Production overrides
+ * 
+ * 8. Vercel Configuration (already in Vercel)
+ *    - .vercel - Vercel deployment metadata
+ * 
+ * 9. TypeScript Build Cache (rebuilt on Vercel)
+ *    - *.tsbuildinfo - Incremental build info
+ * 
+ * 10. Documentation (not needed in production)
+ *     - *.md - Markdown files (except README.md)
+ *     - !README.md - Keep README for reference
+ * 
+ * 11. Test Files (not needed in production)
+ *     - test-aws-connection.js - AWS connection test
+ *     - debug.log - Debug output
+ * 
+ * Benefits:
+ * - Faster deployments (smaller upload size)
+ * - Reduced build time
+ * - Lower bandwidth usage
+ * - Cleaner deployment environment
+ * 
+ * @see https://vercel.com/docs/concepts/projects/project-configuration#vercelignore
+ */
+
 # Dependencies
 node_modules
 .pnp
@@ -41,4 +102,5 @@ yarn-error.log*
 
 # Test files
 test-aws-connection.js
+debug.logconnection.js
 debug.log

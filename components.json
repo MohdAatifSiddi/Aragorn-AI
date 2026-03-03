@@ -1,3 +1,28 @@
+/**
+ * Shadcn UI Components Configuration
+ * 
+ * This file configures the Shadcn UI component library for the project.
+ * Shadcn UI is a collection of re-usable components built with Radix UI and Tailwind CSS.
+ * 
+ * Configuration Options:
+ * - style: "new-york" - Uses the New York design variant (modern, clean aesthetic)
+ * - rsc: true - Enables React Server Components support
+ * - tsx: true - Uses TypeScript with JSX
+ * - tailwind.config: Path to Tailwind config (empty = auto-detect)
+ * - tailwind.css: Path to global CSS file with Tailwind directives
+ * - tailwind.baseColor: "neutral" - Base color palette for components
+ * - tailwind.cssVariables: true - Uses CSS variables for theming
+ * - tailwind.prefix: "" - No prefix for Tailwind classes
+ * - iconLibrary: "lucide" - Uses Lucide React for icons
+ * - aliases: Path aliases for imports (@/components, @/lib, etc.)
+ * 
+ * Usage:
+ * - Run `npx shadcn@latest add <component>` to add new components
+ * - Components are added to src/components/ui/
+ * - Automatically configured with project's Tailwind theme
+ * 
+ * @see https://ui.shadcn.com/docs/components-json
+ */
 {
   "$schema": "https://ui.shadcn.com/schema.json",
   "style": "new-york",

@@ -1,3 +1,51 @@
+/**
+ * TypeScript Configuration
+ * 
+ * Configures TypeScript compiler options for the Aragorn AI project.
+ * Optimized for Next.js 15 with App Router and React 19.
+ * 
+ * Compiler Options:
+ * 
+ * Target & Libraries:
+ * - target: "ES2017" - Compile to ES2017 JavaScript (async/await support)
+ * - lib: ["dom", "dom.iterable", "esnext"] - Include DOM and latest ECMAScript APIs
+ * 
+ * Module System:
+ * - module: "esnext" - Use latest ECMAScript module syntax
+ * - moduleResolution: "bundler" - Use bundler-specific resolution (Next.js/Webpack)
+ * - esModuleInterop: true - Enable CommonJS/ES module interoperability
+ * - resolveJsonModule: true - Allow importing JSON files
+ * - isolatedModules: true - Ensure each file can be transpiled independently
+ * 
+ * Type Checking:
+ * - strict: true - Enable all strict type checking options
+ *   - noImplicitAny, strictNullChecks, strictFunctionTypes, etc.
+ * - skipLibCheck: true - Skip type checking of declaration files (faster builds)
+ * 
+ * JSX & React:
+ * - jsx: "preserve" - Keep JSX syntax (Next.js handles transformation)
+ * 
+ * Build Optimization:
+ * - noEmit: true - Don't emit JavaScript (Next.js handles compilation)
+ * - incremental: true - Enable incremental compilation for faster rebuilds
+ * 
+ * Next.js Integration:
+ * - plugins: [{ "name": "next" }] - Next.js TypeScript plugin for enhanced IDE support
+ * 
+ * Path Aliases:
+ * - @/* maps to ./src/* - Allows imports like @/components/Button
+ * 
+ * Files Included:
+ * - All .ts, .tsx, .mts files in project
+ * - next-env.d.ts - Next.js type declarations
+ * - .next/types/**/*.ts - Generated Next.js types
+ * 
+ * Files Excluded:
+ * - node_modules/ - Third-party packages
+ * 
+ * @see https://www.typescriptlang.org/tsconfig
+ * @see https://nextjs.org/docs/app/building-your-application/configuring/typescript
+ */
 {
   "compilerOptions": {
     "target": "ES2017",

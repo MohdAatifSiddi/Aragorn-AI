@@ -1,3 +1,45 @@
+/**
+ * Vercel Deployment Configuration
+ * 
+ * Configures deployment settings for Vercel hosting platform.
+ * 
+ * Build Configuration:
+ * - buildCommand: "npm run build" - Command to build the application
+ * - devCommand: "npm run dev" - Command for local development
+ * - installCommand: "npm install" - Command to install dependencies
+ * - framework: "nextjs" - Tells Vercel this is a Next.js project
+ * 
+ * Deployment Region:
+ * - regions: ["iad1"] - Deploy to Washington D.C. (US East) region
+ *   - iad1 = Ashburn, Virginia datacenter
+ *   - Optimized for US East Coast users
+ *   - Low latency for North American traffic
+ * 
+ * Environment Variables:
+ * All environment variables reference Vercel secrets (prefixed with @)
+ * These must be configured in Vercel dashboard or CLI:
+ * 
+ * Supabase Configuration:
+ * - NEXT_PUBLIC_SUPABASE_URL: Supabase project URL (public)
+ * - NEXT_PUBLIC_SUPABASE_ANON_KEY: Supabase anonymous key (public)
+ * - SUPABASE_SERVICE_ROLE_KEY: Supabase service role key (private, server-only)
+ * 
+ * AWS Configuration:
+ * - AWS_REGION: AWS region for S3 and Rekognition (e.g., "us-east-1")
+ * - AWS_ACCESS_KEY_ID: AWS IAM access key for API authentication
+ * - AWS_SECRET_ACCESS_KEY: AWS IAM secret key (private)
+ * - AWS_S3_BUCKET: S3 bucket name for image storage
+ * 
+ * Security Notes:
+ * - Never commit actual values to Git
+ * - Use Vercel CLI: `vercel env add <NAME>`
+ * - Or add via Vercel dashboard: Settings > Environment Variables
+ * - NEXT_PUBLIC_* variables are exposed to browser
+ * - Other variables are server-only
+ * 
+ * @see https://vercel.com/docs/projects/project-configuration
+ * @see https://vercel.com/docs/concepts/projects/environment-variables
+ */
 {
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",

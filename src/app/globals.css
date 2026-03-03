@@ -1,8 +1,91 @@
+/**
+ * Global Styles
+ * 
+ * Main stylesheet for the Aragorn AI application.
+ * Uses Tailwind CSS v4 with custom theme configuration.
+ * 
+ * Structure:
+ * 1. Tailwind CSS imports
+ * 2. Custom variant definitions
+ * 3. Theme configuration (inline)
+ * 4. CSS variables for light/dark modes
+ * 5. Base layer styles
+ * 6. Utility classes
+ * 
+ * Tailwind Imports:
+ * - @import "tailwindcss" - Core Tailwind utilities
+ * - @import "tw-animate-css" - Animation utilities
+ * 
+ * Custom Variants:
+ * - dark: Custom dark mode variant using :is(.dark *) selector
+ *   - Allows dark mode styling with .dark class on parent
+ * 
+ * Theme Configuration:
+ * - Uses CSS variables for dynamic theming
+ * - Supports light and dark modes
+ * - Includes custom colors, fonts, and radii
+ * - Maps Tailwind utilities to CSS variables
+ * 
+ * Color System:
+ * - background/foreground: Base colors
+ * - card: Card component colors
+ * - popover: Popover/dropdown colors
+ * - primary: Brand color (blue)
+ * - secondary: Secondary actions
+ * - muted: Subtle backgrounds
+ * - accent: Highlighted elements
+ * - destructive: Error/danger states
+ * - border/input/ring: UI element colors
+ * - chart-1 to chart-5: Chart colors
+ * - sidebar: Sidebar component colors
+ * 
+ * Light Mode Colors:
+ * - Background: #f4f4f4 (light gray)
+ * - Foreground: #171a20 (dark gray)
+ * - Primary: #3d69e1 (blue)
+ * - Destructive: #ee3333 (red)
+ * 
+ * Dark Mode Colors:
+ * - Background: #000000 (pure black)
+ * - Foreground: #ffffff (white)
+ * - Card: #111111 (near black)
+ * - Border: rgba(255, 255, 255, 0.1) (subtle white)
+ * 
+ * Border Radius:
+ * - --radius: 0.5rem (8px) - Base radius
+ * - --radius-sm: 4px - Small radius
+ * - --radius-md: 6px - Medium radius
+ * - --radius-lg: 8px - Large radius
+ * - --radius-xl: 12px - Extra large radius
+ * 
+ * Fonts:
+ * - --font-sans: Geist Sans (primary font)
+ * - --font-mono: Geist Mono (code font)
+ * 
+ * Base Layer:
+ * - Applies border and outline colors to all elements
+ * - Sets body background, text color, and font
+ * - Enables font antialiasing for smoother text
+ * 
+ * Utility Classes:
+ * - .no-scrollbar: Hides scrollbars (cross-browser)
+ * - ::selection: Custom text selection color (blue tint)
+ * 
+ * Usage:
+ * - Imported in src/app/layout.tsx
+ * - Applied globally to all pages
+ * - Works with next-themes for dark mode
+ * 
+ * @see https://tailwindcss.com/docs/adding-custom-styles
+ */
+
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Custom dark mode variant */
 @custom-variant dark (&:is(.dark *));
 
+/* Theme configuration using CSS variables */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -43,6 +126,7 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Light mode color variables */
 :root {
   --radius: 0.5rem;
   --background: #f4f4f4;
@@ -70,6 +154,7 @@
   --chart-5: #8b5cf6;
 }
 
+/* Dark mode color variables */
 .dark {
   --background: #000000;
   --foreground: #ffffff;
@@ -91,6 +176,7 @@
   --ring: #3d69e1;
 }
 
+/* Base styles applied to all elements */
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -100,6 +186,7 @@
   }
 }
 
+/* Utility class to hide scrollbars (cross-browser) */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -108,6 +195,7 @@
   scrollbar-width: none;
 }
 
+/* Custom text selection color */
 ::selection {
   background-color: rgba(61, 105, 225, 0.3);
   color: inherit;

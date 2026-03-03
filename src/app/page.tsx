@@ -1,3 +1,25 @@
+/**
+ * Landing Page Component
+ * 
+ * Marketing homepage for Aragorn AI Construction Intelligence platform.
+ * Features a modern, immersive design with scroll-based animations.
+ * 
+ * Key Sections:
+ * 1. Hero - Main value proposition
+ * 2. Safety Vision - Edge-based PPE detection
+ * 3. Project Velocity - Predictive progress tracking
+ * 4. Features - Enterprise capabilities showcase
+ * 
+ * Design Features:
+ * - Snap scrolling for smooth section transitions
+ * - Parallax background images
+ * - Framer Motion animations
+ * - Responsive layout
+ * - Premium minimalist aesthetic
+ * 
+ * @page / (root)
+ */
+
 "use client";
 
 import Link from "next/link";
@@ -21,13 +43,21 @@ import {
 import { Button } from "@/components/ui/button";
 import { useRef } from "react";
 
+/**
+ * LandingPage Component
+ * Main marketing page with scroll-based sections
+ */
 export default function LandingPage() {
+  // Reference to container for scroll tracking
   const containerRef = useRef(null);
+  
+  // Track scroll progress for animations
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"]
   });
 
+  // Define marketing sections with content and imagery
   const sections = [
     {
       id: "hero",

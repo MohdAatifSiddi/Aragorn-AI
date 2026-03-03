@@ -2,6 +2,7 @@
 -- Run this in your Supabase SQL Editor
 
 -- Add new columns to zones table for safety tracking
+
 ALTER TABLE zones ADD COLUMN IF NOT EXISTS last_safety_check TIMESTAMPTZ;
 ALTER TABLE zones ADD COLUMN IF NOT EXISTS last_safety_score INTEGER DEFAULT 100;
 
