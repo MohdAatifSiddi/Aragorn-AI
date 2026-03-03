@@ -1,36 +1,306 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ⚡ ARAGORN AI
 
-## Getting Started
+### `AUTONOMOUS CONSTRUCTION INTELLIGENCE FOR INDIA`
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```ascii
+╔═══════════════════════════════════════════════════════════╗
+║  EDGE-FIRST  ◆  PRIVACY-NATIVE  ◆  OFFLINE-CAPABLE  ║
+╚═══════════════════════════════════════════════════════════╝
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🎯 THE CRITICAL PROBLEM
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| 👁️ BLIND EXECUTION | ⚠️ UNSAFE SITES | 💸 SYSTEMATIC LEAKAGE |
+|:---:|:---:|:---:|
+| No real-time progress visibility | Accidents, shutdowns, legal risk | Material theft, rework, delays |
 
-## Learn More
+> **Reality Check:** Most construction sites still rely on humans with clipboards walking around. That doesn't scale. Aragorn AI replaces guesswork with **continuous, automated intelligence**.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 💡 OUR SOLUTION
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### ON-SITE EDGE AI + CLOUD ANALYTICS
 
-## Deploy on Vercel
+```mermaid
+graph LR
+A[📱 Edge Devices] -->|Real-time Processing| B[🔒 Privacy Layer]
+B -->|Anonymized Data| C[☁️ Cloud Intelligence]
+C -->|Insights & Alerts| D[📊 Decision Makers]
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Core Capabilities
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- 📊 **AUTOMATED PROGRESS TRACKING** - Zone and floor-level monitoring
+- 🦺 **REAL-TIME SAFETY ENFORCEMENT** - PPE & violation detection with instant alerts
+- 📦 **MATERIAL VERIFICATION** - Delivery tracking and inventory validation
+- ⏱️ **PREDICTIVE INTELLIGENCE** - Early warnings for delays and potential rework
+- 🗣️ **MULTILINGUAL MOBILE REPORTING** - Hindi • English • Urdu
+
+---
+
+## 🚀 QUICK START
+
+### Prerequisites
+- Node.js 18+
+- AWS Account
+- Supabase Account
+
+### Installation
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Configure environment
+cp .env.local.example .env.local
+# Edit .env.local with your AWS and Supabase credentials
+
+# 3. Set up database
+# Run supabase-schema.sql in your Supabase SQL Editor
+
+# 4. Test AWS connection
+npm run test:aws
+
+# 5. Start development server
+npm run dev
+```
+
+Visit `http://localhost:3000` and start analyzing construction sites!
+
+📖 **Detailed Setup**: See [QUICK_START.md](QUICK_START.md)
+
+---
+
+## 🏗️ SYSTEM ARCHITECTURE
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         EDGE LAYER                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
+│  │   📱 Mobile   │  │  📷 Cameras   │  │  🚁 Drones    │         │
+│  │   Devices     │  │   On-Site     │  │   Aerial View │         │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘         │
+│         │                  │                  │                  │
+│         └──────────────────┼──────────────────┘                  │
+│                            ↓                                     │
+│         ┌──────────────────────────────────┐                    │
+│         │  🧠 On-Device Computer Vision    │                    │
+│         │  🔒 Local Anonymization          │                    │
+│         │  💾 Offline Caching              │                    │
+│         └──────────────┬───────────────────┘                    │
+└────────────────────────┼────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                         CLOUD LAYER (AWS)                        │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │  S3  │  Rekognition  │  Lambda  │  SageMaker  │  Bedrock │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│         Data Aggregation • ML Training • LLM Analytics          │
+└────────────────────────┬────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                      APPLICATION LAYER                           │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
+│  │  💻 Web Dashboard │  │  📱 Mobile App   │  │  🔔 Alerts       │ │
+│  │  For Managers    │  │  For Field Teams │  │  Audit Trails   │ │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## ⚔️ THE ARAGORN ADVANTAGE
+
+| Challenge | ❌ Traditional Tools | ✅ Aragorn AI |
+|:----------|:-------------------:|:------------:|
+| **Internet Dependency** | ☁️ Cloud-only | ⚡ **Edge-First** |
+| **Cost Structure** | 💰 Enterprise-priced | ✅ **Affordable** |
+| **Privacy Model** | 📤 Upload everything | 🔒 **Blur Locally** |
+| **Language Support** | 🇬🇧 English-only | 🌍 **Multilingual** |
+| **Intelligence** | 🔄 Reactive | 🎯 **Predictive** |
+
+---
+
+## 🎨 DESIGN PRINCIPLES
+
+### 🏎️ **EDGE-FIRST**
+Critical decisions don't wait for the cloud
+
+### 🔐 **PRIVACY BY DESIGN**
+Face blurring and PII minimization on-device
+
+### 🇮🇳 **INDIAN-FIRST**
+Low bandwidth, low cost, multilingual
+
+### 💰 **ROI-DRIVEN**
+Every feature must reduce cost, risk, or time
+
+---
+
+## 🔧 TECHNOLOGY STACK
+
+### Frontend
+- Next.js 15 (React 19)
+- TypeScript
+- Tailwind CSS
+- Framer Motion
+- Recharts
+
+### Backend
+- Next.js API Routes
+- Supabase (PostgreSQL)
+- Real-time Subscriptions
+
+### AWS Services
+- **S3** - Image storage
+- **Rekognition** - Computer vision AI
+- **Lambda** - Serverless compute (planned)
+- **SageMaker** - ML training (planned)
+
+### Security
+- Supabase Auth
+- Row-Level Security (RLS)
+- IAM Policies
+- End-to-End Encryption
+
+---
+
+## 📊 CURRENT STATUS
+
+| Milestone | Status |
+|:----------|:------:|
+| Problem Validation | ✅ Complete |
+| Requirements & Design | ✅ Complete |
+| MVP Development | ✅ Complete |
+| AWS Integration | ✅ Complete |
+| Single Site Pilot | ⏳ Ready |
+| Multi-Site Scale | ⏳ Planned |
+
+---
+
+## 🚀 ROADMAP
+
+### 🟢 PHASE 1 - Safety Foundation (COMPLETE)
+- ✅ Safety detection
+- ✅ Mobile reporting
+- ✅ Helmet & PPE alerts
+- ✅ AWS Rekognition integration
+
+### 🔵 PHASE 2 - Execution Intelligence (IN PROGRESS)
+- ⏳ Progress tracking from images
+- ⏳ Material verification
+- ⏳ Zone-level monitoring
+- ⏳ Batch upload
+
+### 🟣 PHASE 3 - Predictive Scale (PLANNED)
+- ⏳ ML-powered analytics
+- ⏳ Multi-site scaling
+- ⏳ Custom models
+- ⏳ Global expansion
+
+---
+
+## 👥 TARGET USERS
+
+```
+┌───────────────────┐   ┌───────────────────┐   ┌───────────────────┐
+│   🏗️ Contractors   │   │  👷 Site Engineers │   │  🦺 Safety Officers │
+│   SME Builders    │   │  Project Managers │   │  Compliance Teams │
+└───────────────────┘   └───────────────────┘   └───────────────────┘
+                │                       │                       │
+                └───────────────────────┴───────────────────────┘
+                                        │
+                                ┌────────▼────────┐
+                                │  📦 Store Managers │
+                                │  Material Control │
+                                └─────────────────┘
+```
+
+---
+
+## 💰 PRICING (Estimated)
+
+### AWS Costs
+- **1,000 images/month**: ~$0.30
+- **10,000 images/month**: ~$3
+- **100,000 images/month**: ~$30
+
+### Free Tier
+AWS Free Tier includes 5,000 images/month for first 12 months!
+
+---
+
+## 📚 DOCUMENTATION
+
+- [Quick Start Guide](QUICK_START.md) - Get started in 3 minutes
+- [Implementation Guide](IMPLEMENTATION_GUIDE.md) - Complete technical documentation
+- [AWS Setup Guide](AWS_SETUP_GUIDE.md) - Detailed AWS configuration
+- [Database Schema](supabase-schema.sql) - Supabase table definitions
+
+---
+
+## 🧪 TESTING
+
+```bash
+# Test AWS connection
+npm run test:aws
+
+# Run development server
+npm run dev
+
+# Build for production
+npm run build
+```
+
+---
+
+## 🤝 CONTRIBUTING
+
+We welcome contributions! Please see our contributing guidelines.
+
+---
+
+## 📣 ONE-LINE PITCH
+
+**Aragorn AI gives construction teams real-time visibility and predictive control using privacy-first edge AI—built for India's reality.**
+
+---
+
+## 🌟 THE VISION
+
+### **OPERATING SYSTEM FOR CONSTRUCTION EXECUTION**
+
+> Starting with India. Expanding to emerging markets globally.
+
+```
+NOT dashboards.
+NOT reports.
+REAL intelligence, where the work happens.
+```
+
+---
+
+**Built with ⚡ for the builders of tomorrow**
+
+`Edge-First` • `Privacy-Native` • `India-Ready`
+
+---
+
+## 📄 LICENSE
+
+MIT License - See LICENSE file for details
+
+---
+
+## 📧 CONTACT
+
+For questions, support, or partnerships:
+- Email: [contact@aragorn.ai](mailto:contact@aragorn.ai)
+- Website: [aragorn.ai](https://aragorn.ai)
+
+---
+
+**⚡ ARAGORN AI - Autonomous Construction Intelligence**

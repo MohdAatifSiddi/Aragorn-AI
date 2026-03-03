@@ -53,6 +53,7 @@ import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import ImageUpload from "@/components/ImageUpload";
 
 export default function AragornDashboard() {
   const [lang, setLang] = useState<'en' | 'hi' | 'ur'>('en');
@@ -66,16 +67,18 @@ export default function AragornDashboard() {
   const [detections, setDetections] = useState<any[]>([]);
   const [stats, setStats] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
+  const [siteStats, setSiteStats] = useState<any>(null);
   const router = useRouter();
 
   const fetchSiteDetails = useCallback(async (siteId: string) => {
     try {
-      const [zonesRes, alertsRes, materialsRes, statsRes, detectionsRes] = await Promise.all([
+      const [zonesRes, alertsRes, materialsRes, statsRes, detectionsRes, siteStatsRes] = await Promise.all([
         supabase.from('zones').select('*').eq('site_id', siteId),
-        supabase.from('alerts').select('*').eq('site_id', siteId).order('created_at', { ascending: false }),
+        supabase.from('alerts').select('*').eq('site_id', siteId).order('created_at', { ascending: false }).limit(50),
         supabase.from('material_verifications').select('*').eq('site_id', siteId).order('created_at', { ascending: false }),
         supabase.from('project_stats').select('*').eq('site_id', siteId).order('date', { ascending: true }),
-        supabase.from('detections').select('*, zones(name)').order('created_at', { ascending: false }).limit(20)
+        supabase.from('detections').select('*, zones(name, site_id)').eq('zones.site_id', siteId).order('created_at', { ascending: false }).limit(50),
+        fetch(`/api/stats?siteId=${siteId}`).then(r => r.json())
       ]);
 
       if (zonesRes.data) setZones(zonesRes.data);
@@ -83,6 +86,7 @@ export default function AragornDashboard() {
       if (materialsRes.data) setMaterials(materialsRes.data);
       if (statsRes.data) setStats(statsRes.data);
       if (detectionsRes.data) setDetections(detectionsRes.data);
+      if (siteStatsRes.success) setSiteStats(siteStatsRes.stats);
     } catch (error) {
       console.error("Error fetching site details:", error);
     }
@@ -256,10 +260,14 @@ export default function AragornDashboard() {
 
   const t = translations[lang];
 
-  const currentSafety = stats.length > 0 ? stats[stats.length - 1].safety_compliance_percent : 96;
+  // Use real-time stats from API if available, otherwise fallback to database stats
+  const currentSafety = siteStats?.overallSafetyScore || 
+    (stats.length > 0 ? stats[stats.length - 1].safety_compliance_percent : 96);
   const avgProgress = zones.length > 0 ? Math.round(zones.reduce((acc, z) => acc + z.progress_percent, 0) / zones.length) : 0;
   const activeZonesCount = zones.filter(z => z.status === 'active').length;
-  const highAlerts = alerts.filter(a => a.severity === 'high' && !a.is_resolved).length;
+  const highAlerts = siteStats?.highAlerts || alerts.filter(a => a.severity === 'high' && !a.is_resolved).length;
+  const totalImagesAnalyzed = siteStats?.totalImages || 0;
+  const totalPersonsDetected = siteStats?.totalPersonsDetected || 0;
 
   return (
     <div className={`min-h-screen bg-[#050505] p-4 md:p-8 ${lang === 'ur' ? 'rtl' : 'ltr'} font-sans antialiased text-white selection:bg-blue-600/30`}>
@@ -270,7 +278,7 @@ export default function AragornDashboard() {
           <div className="flex items-center gap-6">
             <motion.div 
               whileHover={{ scale: 1.05 }}
-              whileActive={{ scale: 0.95 }}
+              whileTap={{ scale: 0.95 }}
               className="bg-blue-600 p-4 rounded-3xl shadow-2xl shadow-blue-600/20 cursor-pointer"
             >
               <Construction className="h-6 w-6 text-white" />
@@ -406,10 +414,10 @@ export default function AragornDashboard() {
             {/* Real-time KPI Overview */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                    { label: t.safety, value: `${currentSafety}%`, icon: ShieldCheck, color: "text-green-500", bg: "bg-green-500/10", trend: "+0.5%" },
-                    { label: t.progress, value: `${avgProgress}%`, icon: TrendingUp, color: "text-blue-500", bg: "bg-blue-500/10", trend: "+2.1%" },
-                    { label: t.activeZones, value: activeZonesCount, icon: Layers, color: "text-zinc-400", bg: "bg-zinc-400/10", trend: "0" },
-                    { label: t.alerts, value: alerts.filter(a => !a.is_resolved).length, icon: AlertTriangle, color: "text-red-500", bg: "bg-red-500/10", trend: highAlerts > 0 ? `${highAlerts} CRITICAL` : "STABLE" }
+                    { label: t.safety, value: `${currentSafety}%`, icon: ShieldCheck, color: "text-green-500", bg: "bg-green-500/10", trend: currentSafety >= 90 ? "EXCELLENT" : currentSafety >= 70 ? "GOOD" : "NEEDS ATTENTION", subtitle: `${totalImagesAnalyzed} images analyzed` },
+                    { label: t.progress, value: `${avgProgress}%`, icon: TrendingUp, color: "text-blue-500", bg: "bg-blue-500/10", trend: "+2.1%", subtitle: `${activeZonesCount} active zones` },
+                    { label: "Workers Detected", value: totalPersonsDetected, icon: HardHat, color: "text-zinc-400", bg: "bg-zinc-400/10", trend: "TRACKED", subtitle: "Total from images" },
+                    { label: t.alerts, value: alerts.filter(a => !a.is_resolved).length, icon: AlertTriangle, color: "text-red-500", bg: "bg-red-500/10", trend: highAlerts > 0 ? `${highAlerts} CRITICAL` : "STABLE", subtitle: `${siteStats?.violations || 0} violations` }
                 ].map((kpi, i) => (
                     <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
                         <Card className="bg-zinc-900/20 border-zinc-800/50 hover:bg-zinc-900/40 transition-all cursor-default group border-none shadow-2xl">
@@ -425,6 +433,9 @@ export default function AragornDashboard() {
                                 <div className="space-y-1">
                                     <h3 className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">{kpi.label}</h3>
                                     <p className="text-3xl font-bold tracking-tighter text-white">{kpi.value}</p>
+                                    {kpi.subtitle && (
+                                        <p className="text-[9px] text-zinc-700 uppercase tracking-widest">{kpi.subtitle}</p>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
@@ -600,6 +611,21 @@ export default function AragornDashboard() {
                     </TabsContent>
                 </AnimatePresence>
             </Tabs>
+
+            {/* Image Upload Section */}
+            {selectedSite && (
+              <ImageUpload 
+                siteId={selectedSite.id} 
+                zoneId={zones[0]?.id}
+                onUploadComplete={(result) => {
+                  // Refresh data after successful analysis
+                  if (result?.refresh || result?.success) {
+                    fetchSiteDetails(selectedSite.id);
+                    toast.success("Dashboard updated with latest analysis");
+                  }
+                }}
+              />
+            )}
 
             {/* Velocity Trends */}
             <Card className="bg-zinc-900/20 border-none shadow-3xl p-10">
