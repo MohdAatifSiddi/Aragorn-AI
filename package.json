@@ -6,8 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "test:aws": "node test-aws-connection.js"
+    "lint": "next lint",
+    "test:aws": "node test-aws-connection.js",
+    "postbuild": "echo 'Build completed successfully'"
   },
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.1000.0",
